@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "arrowflow-f6b65"
+  },
+  "targets": {
+    "arrowflow-f6b65": {
+      "hosting": {
+        "tr": [
+          "arrowflow"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

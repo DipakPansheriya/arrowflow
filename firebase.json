@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "target": "tr",
+    "public": "website/dist/website/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

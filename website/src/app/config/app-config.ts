@@ -18,12 +18,12 @@ export const APP_CONFIG = {
   subtitle: 'Cross-Platform VS Code Automation',
   description: 'Lightweight desktop automation for Windows & macOS.',
   version: 'v1.0.0',
-  
+
   // Windows Direct Release Asset URL
-  windowsDownloadUrl: 'https://github.com/USERNAME/REPOSITORY/releases/download/v1.0.0/ArrowFlow.exe',
+  windowsDownloadUrl: 'https://github.com/DipakPansheriya/arrowflow/releases/latest/download/ArrowFlow.exe',
   localWindowsUrl: '/ArrowFlow.exe',
-  
+
   // macOS Direct Release Asset URL
-  macosDownloadUrl: 'https://github.com/USERNAME/REPOSITORY/releases/download/v1.0.0/ArrowFlow.dmg',
+  macosDownloadUrl: 'https://github.com/DipakPansheriya/arrowflow/releases/latest/download/ArrowFlow.dmg',
   localMacosUrl: '/ArrowFlow.dmg'
 };
