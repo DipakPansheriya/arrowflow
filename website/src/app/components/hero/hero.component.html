@@ -1,0 +1,142 @@
+<section class="hero-section">
+  <div class="hero-bg-glow"></div>
+  <div class="container hero-container">
+    <div class="hero-content">
+      <div class="badge-tag badge-cyan">
+        <span class="pulse-dot"></span>
+        <span>Windows Standalone EXE v{{ config.version }}</span>
+      </div>
+
+      <h1 class="hero-title">
+        Automate Your VS Code Workflow with <span class="text-gradient-cyan">ArrowFlow</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Lightweight Windows automation for randomized keyboard and mouse actions, VS Code file switching, and workflow control.
+      </p>
+
+      <div class="hero-buttons">
+        <button class="btn-primary" (click)="downloadExe()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download for Windows</span>
+        </button>
+
+        <a href="#documentation" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span>View Documentation</span>
+        </a>
+      </div>
+
+      <div class="hero-meta">
+        <div class="meta-item">
+          <span class="check-icon">✓</span>
+          <span>No Python runtime needed</span>
+        </div>
+        <div class="meta-item">
+          <span class="check-icon">✓</span>
+          <span>Zero installation setup</span>
+        </div>
+        <div class="meta-item">
+          <span class="check-icon">✓</span>
+          <span>Windows 10 / 11 Native</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Professional Desktop UI HTML/CSS Mockup -->
+    <div class="hero-mockup-wrapper">
+      <div class="app-window-frame">
+        <!-- Window Titlebar -->
+        <div class="window-titlebar">
+          <div class="window-title">
+            <span class="app-icon">⚡</span>
+            <span>ArrowFlow</span>
+          </div>
+          <div class="window-controls">
+            <span class="win-btn win-min">─</span>
+            <span class="win-btn win-max">□</span>
+            <span class="win-btn win-close">✕</span>
+          </div>
+        </div>
+
+        <!-- Window Body -->
+        <div class="window-body">
+          <!-- Header Bar -->
+          <div class="mockup-header">
+            <div>
+              <div class="app-brand">⚡ ArrowFlow</div>
+              <div class="app-sub">v{{ config.version }} · Random activity simulator</div>
+            </div>
+            <div class="status-badge" [class.running]="mockupRunning">
+              ● {{ mockupRunning ? 'RUNNING' : 'STOPPED' }}
+            </div>
+          </div>
+
+          <!-- Card 1: Target Window -->
+          <div class="mockup-card">
+            <div class="card-label">TARGET WINDOW (VS CODE PREFERRED)</div>
+            <div class="combo-box">
+              <span>● Visual Studio Code - arrowflow.ts</span>
+              <span class="conn-tag">● Connected</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Arrow Press Range -->
+          <div class="mockup-card">
+            <div class="card-label">ARROW PRESS RANGE (PER MINUTE)</div>
+            <div class="range-inputs">
+              <div class="input-box">
+                <span class="input-tag">MIN</span>
+                <span class="input-val">10</span>
+              </div>
+              <div class="input-box">
+                <span class="input-tag">MAX</span>
+                <span class="input-val">40</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Live Progress Display -->
+          <div class="mockup-card live-card">
+            <div class="live-header">
+              <span class="card-label">CURRENT MINUTE TARGET</span>
+              <span class="target-big">{{ mockupTarget }}</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" [style.width.%]="mockupPct"></div>
+            </div>
+            <div class="live-footer">
+              <span>{{ mockupCurrent }} / {{ mockupTarget }}</span>
+              <span>{{ mockupPct }}%</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Status Indicator -->
+          <div class="mockup-card status-card-inner">
+            <div class="status-line">● Target: Connected to VS Code</div>
+            <div class="status-line">
+              ● Arrow & Mouse Automation: {{ mockupRunning ? 'Active' : 'Ready' }}
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button class="mockup-action-btn" [class.running]="mockupRunning" (click)="startMockupSimulation()">
+            {{ mockupRunning ? '■ STOP AUTOMATION' : '▶ START AUTOMATION' }}
+          </button>
+          <div class="mockup-hint">
+            ESC Toggle Automation · ALT+SPACE Toggle Visibility
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,19 @@
+<section id="how-it-works" class="section-padding how-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge-tag badge-cyan">Simple Setup</div>
+      <h2 class="section-title">How <span class="text-gradient-cyan">ArrowFlow Works</span></h2>
+      <p class="section-subtitle">
+        Get up and running in under 60 seconds. Four straightforward steps to automated workflow simulation.
+      </p>
+    </div>
+
+    <div class="steps-grid">
+      <div *ngFor="let step of steps" class="glass-card step-card">
+        <div class="step-num">{{ step.num }}</div>
+        <h3 class="step-title">{{ step.title }}</h3>
+        <p class="step-desc">{{ step.description }}</p>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,23 @@
+<section id="faq" class="section-padding faq-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge-tag badge-cyan">Answers & Support</div>
+      <h2 class="section-title">Frequently Asked <span class="text-gradient-cyan">Questions</span></h2>
+      <p class="section-subtitle">
+        Everything you need to know about ArrowFlow architecture, settings, and compatibility.
+      </p>
+    </div>
+
+    <div class="faq-list">
+      <div *ngFor="let item of faqs; let i = index" class="glass-card faq-item" [class.open]="item.open">
+        <button class="faq-question" (click)="toggleFaq(i)" [attr.aria-expanded]="item.open">
+          <span>{{ item.question }}</span>
+          <span class="faq-icon">{{ item.open ? '−' : '+' }}</span>
+        </button>
+        <div class="faq-answer" *ngIf="item.open">
+          <p>{{ item.answer }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

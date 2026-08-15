@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.spec
+website/node_modules/
+website/dist/

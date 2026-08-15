@@ -1,0 +1,50 @@
+<section id="download" class="section-padding download-section">
+  <div class="container">
+    <div class="glass-card download-card">
+      <div class="download-badge">
+        <span class="pulse-dot"></span>
+        <span>OFFICIAL RELEASE v{{ config.version }}</span>
+      </div>
+
+      <h2 class="download-title">Download ArrowFlow for Windows</h2>
+      <p class="download-subtitle">
+        Get the latest standalone Windows executable and start automating your VS Code workflow in seconds.
+      </p>
+
+      <div class="download-actions">
+        <button class="btn-primary btn-dl-large" (click)="downloadExe()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download ArrowFlow.exe</span>
+        </button>
+      </div>
+
+      <div class="download-specs">
+        <div class="spec-item">
+          <span class="spec-label">VERSION</span>
+          <span class="spec-value">v{{ config.version }}</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">PLATFORM</span>
+          <span class="spec-value">Windows 10 / 11 (64-bit)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">PACKAGE</span>
+          <span class="spec-value">Standalone EXE</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">FILE SIZE</span>
+          <span class="spec-value">{{ config.fileSize }}</span>
+        </div>
+      </div>
+
+      <div class="checksum-box">
+        <span class="hash-label">SHA-256 Checksum:</span>
+        <code class="hash-code">{{ config.sha256Hash }}</code>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,21 @@
+<section class="section-padding use-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge-tag badge-purple">Step-by-Step Guide</div>
+      <h2 class="section-title">How to Use <span class="text-gradient-cyan">ArrowFlow</span></h2>
+      <p class="section-subtitle">
+        Follow this step-by-step user guide to configure and operate ArrowFlow effectively on Windows.
+      </p>
+    </div>
+
+    <div class="use-timeline">
+      <div *ngFor="let item of useSteps" class="glass-card use-card">
+        <div class="use-badge">{{ item.step }}</div>
+        <div class="use-info">
+          <h3 class="use-title">{{ item.title }}</h3>
+          <p class="use-desc">{{ item.description }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

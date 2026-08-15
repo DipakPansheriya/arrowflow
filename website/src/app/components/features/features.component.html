@@ -1,0 +1,22 @@
+<section id="features" class="section-padding features-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge-tag badge-purple">Powerful Capabilities</div>
+      <h2 class="section-title">Designed for Seamless <span class="text-gradient-cyan">VS Code Automation</span></h2>
+      <p class="section-subtitle">
+        ArrowFlow packs powerful desktop automation features inside a lightweight, zero-overhead Windows binary.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div *ngFor="let item of features" class="glass-card feature-card">
+        <div class="card-top">
+          <span class="feature-icon">{{ item.icon }}</span>
+          <span class="badge-tag badge-cyan">{{ item.tag }}</span>
+        </div>
+        <h3 class="feature-title">{{ item.title }}</h3>
+        <p class="feature-desc">{{ item.description }}</p>
+      </div>
+    </div>
+  </div>
+</section>

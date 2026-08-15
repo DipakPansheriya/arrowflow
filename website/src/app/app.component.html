@@ -1,0 +1,48 @@
+<main class="download-page">
+  <div class="glow-bg"></div>
+
+  <div class="download-container">
+    <!-- Brand Logo -->
+    <div class="logo-box">
+      <span class="logo-icon">⚡</span>
+      <h1 class="logo-title">{{ config.name }}</h1>
+    </div>
+
+    <!-- Subtitle & Description -->
+    <div class="text-box">
+      <h2 class="sub-title">{{ config.subtitle }}</h2>
+      <p class="description">{{ config.description }}</p>
+    </div>
+
+    <!-- Primary Download CTA -->
+    <div class="action-box">
+      <button class="download-btn" (click)="downloadExe()" [attr.aria-label]="'Download ArrowFlow for ' + (userOS === 'macos' ? 'macOS' : 'Windows')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Download for {{ userOS === 'macos' ? 'macOS (.dmg)' : 'Windows (.exe)' }}</span>
+      </button>
+    </div>
+
+    <!-- Platform & Version Metadata -->
+    <div class="meta-box">
+      <span class="platform-text">
+        {{ userOS === 'macos' ? 'macOS 11+ • Standalone .dmg' : 'Windows 10 / 11 • Standalone .exe' }}
+      </span>
+      <span class="meta-dot">•</span>
+      <span class="version-text">Latest version: {{ config.version }}</span>
+    </div>
+
+    <!-- Alternative Platform Switch Link -->
+    <div class="alt-os-box">
+      <button *ngIf="userOS === 'windows'" class="alt-os-link" (click)="downloadExe('macos')">
+         Looking for macOS version? Download ArrowFlow.dmg
+      </button>
+      <button *ngIf="userOS === 'macos'" class="alt-os-link" (click)="downloadExe('windows')">
+        🪟 Looking for Windows version? Download ArrowFlow.exe
+      </button>
+    </div>
+  </div>
+</main>

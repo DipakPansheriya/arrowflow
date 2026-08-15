@@ -1,0 +1,189 @@
+/* ArrowFlow Professional Dark Software Design System */
+:root {
+  --bg-primary: #181825;
+  --bg-card: #121625;
+  --bg-card-sub: #192035;
+  --bg-input: #0E121E;
+  
+  --border-color: #242E48;
+  --border-light: #313244;
+  
+  --accent-cyan: #00D2FF;
+  --accent-cyan-hover: #33DDFF;
+  --accent-green: #00E5A3;
+  --accent-green-hover: #26FFBF;
+  --accent-purple: #7C3AED;
+  --accent-purple-light: #9333EA;
+  --accent-red: #FF4D6D;
+  
+  --text-main: #FFFFFF;
+  --text-sec: #A6ADC8;
+  --text-muted: #6C7086;
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-cyan: 0 0 25px rgba(0, 210, 255, 0.18);
+  --shadow-purple: 0 0 25px rgba(124, 58, 237, 0.2);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2D354E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* Utility Containers */
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section-padding {
+  padding: 96px 0;
+  
+  @media (max-width: 768px) {
+    padding: 64px 0;
+  }
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #00D2FF 0%, #00E5A3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-purple {
+  background: linear-gradient(135deg, #00D2FF 0%, #9333EA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Common Card Styling */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  
+  &:hover {
+    border-color: rgba(0, 210, 255, 0.35);
+    box-shadow: var(--shadow-cyan);
+  }
+}
+
+.badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  &.badge-cyan {
+    background: rgba(0, 210, 255, 0.1);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(0, 210, 255, 0.25);
+  }
+
+  &.badge-green {
+    background: rgba(0, 229, 163, 0.1);
+    color: var(--accent-green);
+    border: 1px solid rgba(0, 229, 163, 0.25);
+  }
+
+  &.badge-purple {
+    background: rgba(124, 58, 237, 0.15);
+    color: #A78BFA;
+    border: 1px solid rgba(124, 58, 237, 0.3);
+  }
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #00E5A3 0%, #00D2FF 100%);
+  color: #090C15;
+  font-weight: 700;
+  font-size: 0.98rem;
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 229, 163, 0.25);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(0, 210, 255, 0.4);
+    color: #090C15;
+  }
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--bg-card-sub);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.98rem;
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    background: #242E48;
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+    color: var(--text-main);
+  }
+}

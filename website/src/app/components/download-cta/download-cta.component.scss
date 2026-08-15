@@ -1,0 +1,136 @@
+.download-section {
+  position: relative;
+}
+
+.download-card {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 64px 48px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(18, 22, 37, 0.95) 0%, rgba(25, 32, 53, 0.95) 100%);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 210, 255, 0.15);
+
+  @media (max-width: 768px) {
+    padding: 40px 24px;
+  }
+}
+
+.download-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: rgba(0, 229, 163, 0.1);
+  color: var(--accent-green);
+  border: 1px solid rgba(0, 229, 163, 0.3);
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin-bottom: 24px;
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-green);
+  }
+}
+
+.download-title {
+  font-size: 2.6rem;
+  font-weight: 900;
+  margin-bottom: 16px;
+  color: var(--text-main);
+
+  @media (max-width: 576px) {
+    font-size: 1.95rem;
+  }
+}
+
+.download-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-sec);
+  max-width: 600px;
+  margin: 0 auto 36px;
+}
+
+.download-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+
+  .btn-dl-large {
+    padding: 16px 36px;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 229, 163, 0.3);
+
+    &:hover {
+      box-shadow: 0 12px 35px rgba(0, 210, 255, 0.45);
+    }
+
+    @media (max-width: 576px) {
+      width: 100%;
+    }
+  }
+}
+
+.download-specs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 32px;
+  margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .spec-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .spec-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .spec-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+  }
+}
+
+.checksum-box {
+  background: #0E121E;
+  border: 1px solid var(--border-color);
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .hash-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  .hash-code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-sec);
+    word-break: break-all;
+  }
+}

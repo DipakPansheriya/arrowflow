@@ -1,0 +1,232 @@
+<section id="documentation" class="section-padding doc-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="badge-tag badge-cyan">Technical Reference</div>
+      <h2 class="section-title">ArrowFlow <span class="text-gradient-cyan">Documentation</span></h2>
+      <p class="section-subtitle">
+        Complete operational manual for configuration, input engines, event scheduling, and keyboard shortcuts.
+      </p>
+    </div>
+
+    <!-- Mobile Topic Select Dropdown -->
+    <div class="mobile-doc-select">
+      <label for="docSelect">Select Topic:</label>
+      <select id="docSelect" [(ngModel)]="activeSection" (change)="setActiveSection(activeSection)">
+        <option *ngFor="let sec of sections" [value]="sec.id">{{ sec.title }}</option>
+      </select>
+    </div>
+
+    <div class="doc-layout">
+      <!-- Left Sticky Sidebar -->
+      <aside class="doc-sidebar">
+        <div class="sidebar-inner">
+          <div class="sidebar-title">DOCUMENTATION NAVIGATION</div>
+          <div class="sidebar-nav">
+            <button
+              *ngFor="let sec of sections"
+              class="nav-item"
+              [class.active]="activeSection === sec.id"
+              (click)="setActiveSection(sec.id)">
+              <span>{{ sec.title }}</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Main Content Area -->
+      <main class="doc-content">
+        <!-- 1. Getting Started -->
+        <article id="getting-started" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Overview</span>
+            <h2>1. Getting Started</h2>
+          </div>
+          <p>
+            <strong>ArrowFlow</strong> is a standalone 64-bit Windows desktop application compiled using PyInstaller. It automates keyboard arrow presses, mouse clicks, and tab file switching targeted at active Visual Studio Code editor windows.
+          </p>
+          <div class="code-box">
+            <code>Executable: ArrowFlow.exe | Target OS: Windows 10 / 11 | Architecture: x64</code>
+          </div>
+        </article>
+
+        <!-- 2. Authentication -->
+        <article id="authentication" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Overview</span>
+            <h2>2. Authentication</h2>
+          </div>
+          <p>
+            ArrowFlow opens to a dark password lock screen upon launch. Access requires entering the configured application password.
+          </p>
+          <div class="alert-box alert-info">
+            <strong>Default Password:</strong> <code>Deep&#64;2026</code> (Hashed securely via SHA-256 in app configuration).
+          </div>
+        </article>
+
+        <!-- 3. VS Code Selection -->
+        <article id="vscode-selection" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Configuration</span>
+            <h2>3. VS Code Target Selection</h2>
+          </div>
+          <p>
+            ArrowFlow enumerates top-level active windows via Win32 API and populates the <strong>Target Window</strong> combobox dropdown.
+          </p>
+          <ul>
+            <li>Windows matching <code>Visual Studio Code</code> are auto-highlighted.</li>
+            <li>Clicking <strong>Refresh</strong> updates the window list if VS Code was opened after ArrowFlow.</li>
+            <li>Keypresses and clicks are delivered via Win32 messaging to the selected target window handle (HWND).</li>
+          </ul>
+        </article>
+
+        <!-- 4. Arrow Press Range -->
+        <article id="arrow-range" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Configuration</span>
+            <h2>4. Arrow Press Range</h2>
+          </div>
+          <p>
+            The <strong>ARROW PRESS RANGE</strong> controls the bounds of randomized activity generated per 60-second minute cycle.
+          </p>
+          <div class="spec-grid">
+            <div class="spec-card">
+              <span class="spec-label">MIN PRESSES</span>
+              <span class="spec-val">Minimum target (Default: 10)</span>
+            </div>
+            <div class="spec-card">
+              <span class="spec-label">MAX PRESSES</span>
+              <span class="spec-val">Maximum target (Default: 40)</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. Random Per-Minute Target -->
+        <article id="per-minute-target" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Core Engine</span>
+            <h2>5. Random Per-Minute Target</h2>
+          </div>
+          <p>
+            At the beginning of each 60-second window, ArrowFlow generates a single integer target N between MIN and MAX.
+          </p>
+          <div class="example-box">
+            <p><strong>Example per-minute targets:</strong></p>
+            <p>● Minute 1: Target = <strong>22</strong> (22 Keyboard Events, 22 Mouse Clicks)</p>
+            <p>● Minute 2: Target = <strong>34</strong> (34 Keyboard Events, 34 Mouse Clicks)</p>
+            <p>● Minute 3: Target = <strong>15</strong> (15 Keyboard Events, 15 Mouse Clicks)</p>
+          </div>
+        </article>
+
+        <!-- 6. Keyboard Automation -->
+        <article id="keyboard-automation" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Core Engine</span>
+            <h2>6. Keyboard Automation</h2>
+          </div>
+          <p>
+            Keyboard automation sends arrow keypresses (<code>UP</code>, <code>DOWN</code>, <code>LEFT</code>, <code>RIGHT</code>) to the target VS Code window.
+          </p>
+          <ul>
+            <li>Directions are randomly selected for every event.</li>
+            <li>Executed via Win32 window messages.</li>
+          </ul>
+        </article>
+
+        <!-- 7. Mouse Automation -->
+        <article id="mouse-automation" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Core Engine</span>
+            <h2>7. Mouse Automation</h2>
+          </div>
+          <p>
+            Mouse automation is optional and executes left mouse clicks targeted inside the active VS Code editor text bounds.
+          </p>
+          <div class="alert-box alert-success">
+            <strong>Optimized Mouse Engine:</strong> Window activation is skipped if VS Code is already active. Mouse cursor movement is skipped if the pointer is already inside active editor bounds.
+          </div>
+        </article>
+
+        <!-- 8. File Switching -->
+        <article id="file-switching" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Core Engine</span>
+            <h2>8. File Switching</h2>
+          </div>
+          <p>
+            File Switching executes <code>Ctrl+Shift+Tab</code> tab switches at minute transitions when enabled.
+          </p>
+          <p>
+            The user configures MIN and MAX file-switch bounds. At the end of each 60-second cycle, ArrowFlow executes consecutive tab switches according to the generated count.
+          </p>
+        </article>
+
+        <!-- 9. ESC Toggle -->
+        <article id="esc-toggle" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Hotkeys</span>
+            <h2>9. ESC Global Toggle</h2>
+          </div>
+          <p>
+            ArrowFlow registers a low-level global keyboard hook for the <code>ESC</code> key.
+          </p>
+          <div class="toggle-flow">
+            <div class="flow-state">Automation ON</div>
+            <div class="flow-arrow">──► Press ESC ──►</div>
+            <div class="flow-state">Automation OFF</div>
+            <div class="flow-arrow">──► Press ESC ──►</div>
+            <div class="flow-state">Automation ON</div>
+          </div>
+        </article>
+
+        <!-- 10. Start / Stop -->
+        <article id="start-stop" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Control</span>
+            <h2>10. Start / Stop</h2>
+          </div>
+          <p>
+            Clicking <strong>START AUTOMATION</strong> initializes the background thread and schedule queue. Clicking <strong>STOP AUTOMATION</strong> sets the thread cancellation flag, stopping all actions cleanly without leftover events.
+          </p>
+        </article>
+
+        <!-- 11. Window / Taskbar Behavior -->
+        <article id="window-behavior" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Interface</span>
+            <h2>11. Window &amp; Taskbar Behavior</h2>
+          </div>
+          <p>
+            ArrowFlow launches visible on screen and in the Windows Taskbar by default.
+          </p>
+          <div class="alert-box alert-purple">
+            <strong>Global Hotkey:</strong> Press <code>ALT + SPACE</code> anytime to toggle window and Taskbar button visibility.
+          </div>
+        </article>
+
+        <!-- 12. Troubleshooting -->
+        <article id="troubleshooting" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Help</span>
+            <h2>12. Troubleshooting</h2>
+          </div>
+          <ul>
+            <li><strong>VS Code not appearing in list:</strong> Click the <em>Refresh List</em> button or ensure VS Code is not minimized.</li>
+            <li><strong>Keypresses not registering:</strong> Ensure VS Code window handle is valid and active editor pane has cursor focus.</li>
+            <li><strong>ESC key repeat:</strong> Built-in 350ms monotonic debouncing prevents accidental double toggles.</li>
+          </ul>
+        </article>
+
+        <!-- 13. FAQ -->
+        <article id="faq-section" class="doc-article glass-card">
+          <div class="article-header">
+            <span class="badge-tag badge-cyan">Help</span>
+            <h2>13. Frequently Asked Questions</h2>
+          </div>
+          <p>
+            Refer to the dedicated <a href="#faq">FAQ Section</a> below for common questions regarding platform support, architecture, and download security.
+          </p>
+        </article>
+      </main>
+    </div>
+  </div>
+</section>

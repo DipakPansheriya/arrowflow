@@ -1,0 +1,45 @@
+<footer class="app-footer">
+  <div class="container footer-container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="brand-logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">ArrowFlow</span>
+        </a>
+        <p class="brand-desc">
+          Lightweight Windows desktop automation utility for randomized keyboard and mouse actions, VS Code workflow automation and file switching.
+        </p>
+        <div class="version-badge">
+          <span>Version {{ config.version }} · {{ config.platform }}</span>
+        </div>
+      </div>
+
+      <div class="footer-nav-col">
+        <div class="nav-col-title">NAVIGATION</div>
+        <a href="#">Home</a>
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+      </div>
+
+      <div class="footer-nav-col">
+        <div class="nav-col-title">DOCUMENTATION</div>
+        <a href="#documentation">Getting Started</a>
+        <a href="#documentation">Input Engines</a>
+        <a href="#documentation">ESC Hotkey</a>
+      </div>
+
+      <div class="footer-nav-col">
+        <div class="nav-col-title">DOWNLOAD</div>
+        <a href="#download" (click)="downloadExe(); $event.preventDefault()">Download EXE</a>
+        <a href="#faq">FAQ</a>
+        <a href="#download">Release Notes</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="copyright">
+        © {{ currentYear }} ArrowFlow Software. All rights reserved. Windows is a registered trademark of Microsoft Corporation.
+      </div>
+    </div>
+  </div>
+</footer>
