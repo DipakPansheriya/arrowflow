@@ -118,6 +118,7 @@ class ArrowAutomationGUI:
         
         self.is_authenticated = False
         self.file_switch_enabled = False
+        self.chrome_enabled = False
         self.is_window_hidden = False
         self.last_esc_time = 0.0
         self.last_alt_space_time = 0.0
@@ -640,6 +641,95 @@ class ArrowAutomationGUI:
         )
         lbl_file_hint.pack(anchor="w", padx=CARD_PAD_X, pady=(0, CARD_PAD_Y))
 
+        # CARD 4: GOOGLE CHROME ALTERNATING MODE Card
+        chrome_card = tk.Frame(self.scrollable_frame, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        chrome_card.pack(fill="x", pady=(0, CARD_GAP))
+        
+        chrome_hdr_frame = tk.Frame(chrome_card, bg=self.card_bg)
+        chrome_hdr_frame.pack(fill="x", padx=CARD_PAD_X, pady=(CARD_PAD_Y, CONTROL_GAP))
+        
+        chrome_hdr_left = tk.Frame(chrome_hdr_frame, bg=self.card_bg)
+        chrome_hdr_left.pack(side="left")
+        
+        lbl_chrome_title = tk.Label(chrome_hdr_left, text="GOOGLE CHROME BROWSER", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.sec_fg)
+        lbl_chrome_title.pack(anchor="w")
+        
+        lbl_chrome_sub = tk.Label(chrome_hdr_left, text="Alternate between VS Code and Chrome with random durations", font=("Segoe UI", 8), bg=self.card_bg, fg=self.muted_fg)
+        lbl_chrome_sub.pack(anchor="w")
+        
+        self.btn_chrome_toggle = tk.Button(
+            chrome_hdr_frame,
+            text="[ OFF ]",
+            font=("Segoe UI", 8, "bold"),
+            bg=self.card_sec_bg,
+            fg=self.sec_fg,
+            activebackground=self.card_sec_bg,
+            activeforeground=self.fg_color,
+            bd=0,
+            cursor="hand2",
+            padx=10,
+            pady=3,
+            relief="flat",
+            command=self._toggle_chrome_mode
+        )
+        self.btn_chrome_toggle.pack(side="right")
+        
+        chrome_box = tk.Frame(chrome_card, bg=self.card_sec_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        chrome_box.pack(fill="x", padx=CARD_PAD_X, pady=(0, CONTROL_GAP))
+        
+        chrome_inner = tk.Frame(chrome_box, bg=self.card_sec_bg)
+        chrome_inner.pack(anchor="center", pady=6)
+        
+        lbl_cmin_tag = tk.Label(chrome_inner, text="MIN", font=("Segoe UI", 8, "bold"), bg=self.card_sec_bg, fg=self.sec_fg)
+        lbl_cmin_tag.pack(side="left", padx=(0, 6))
+        
+        self.ent_chrome_min = tk.Entry(
+            chrome_inner, 
+            width=5, 
+            font=("Segoe UI", 12, "bold"), 
+            bg=self.input_bg, 
+            fg=self.disabled_fg, 
+            insertbackground=self.accent_blue,
+            bd=1,
+            relief="solid",
+            highlightbackground=self.border_color,
+            justify="center",
+            state="disabled"
+        )
+        self.ent_chrome_min.insert(0, "5")
+        self.ent_chrome_min.pack(side="left", ipady=2)
+        
+        lbl_carrow = tk.Label(chrome_inner, text="—", font=("Segoe UI", 12, "bold"), bg=self.card_sec_bg, fg=self.accent_blue)
+        lbl_carrow.pack(side="left", padx=12)
+        
+        lbl_cmax_tag = tk.Label(chrome_inner, text="MAX", font=("Segoe UI", 8, "bold"), bg=self.card_sec_bg, fg=self.sec_fg)
+        lbl_cmax_tag.pack(side="left", padx=(0, 6))
+        
+        self.ent_chrome_max = tk.Entry(
+            chrome_inner, 
+            width=5, 
+            font=("Segoe UI", 12, "bold"), 
+            bg=self.input_bg, 
+            fg=self.disabled_fg, 
+            insertbackground=self.accent_blue,
+            bd=1,
+            relief="solid",
+            highlightbackground=self.border_color,
+            justify="center",
+            state="disabled"
+        )
+        self.ent_chrome_max.insert(0, "10")
+        self.ent_chrome_max.pack(side="left", ipady=2)
+        
+        lbl_chrome_hint = tk.Label(
+            chrome_card, 
+            text="Generates a NEW random duration (min) each cycle switch.", 
+            font=("Segoe UI", 8), 
+            bg=self.card_bg, 
+            fg=self.muted_fg
+        )
+        lbl_chrome_hint.pack(anchor="w", padx=CARD_PAD_X, pady=(0, CARD_PAD_Y))
+
         # CARD 5: CURRENT TARGET Card
         target_display_card = tk.Frame(self.scrollable_frame, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
         target_display_card.pack(fill="x", pady=(0, CARD_GAP))
@@ -737,7 +827,10 @@ class ArrowAutomationGUI:
         self.lbl_status_arrow.pack(anchor="w", pady=(0, 4))
 
         self.lbl_file_switch_status = tk.Label(status_inner, text="● File Switch: OFF", font=("Segoe UI", 8, "bold"), bg=self.card_sec_bg, fg=self.sec_fg)
-        self.lbl_file_switch_status.pack(anchor="w")
+        self.lbl_file_switch_status.pack(anchor="w", pady=(0, 4))
+
+        self.lbl_chrome_status = tk.Label(status_inner, text="● Chrome Mode: OFF", font=("Segoe UI", 8, "bold"), bg=self.card_sec_bg, fg=self.sec_fg)
+        self.lbl_chrome_status.pack(anchor="w")
 
         # Populate windows list
         self._refresh_window_list()
@@ -802,6 +895,34 @@ class ArrowAutomationGUI:
             self.ent_file_min.config(state="disabled", fg=self.disabled_fg)
             self.ent_file_max.config(state="disabled", fg=self.disabled_fg)
             self.lbl_file_switch_status.config(text="● File Switch: OFF", fg=self.sec_fg)
+
+    def _toggle_chrome_mode(self):
+        """Toggle Google Chrome Alternating mode state ON/OFF."""
+        self.chrome_enabled = not self.chrome_enabled
+        if self.chrome_enabled:
+            self.btn_chrome_toggle.config(
+                text="[ ON ]",
+                bg=self.accent_green,
+                fg="#090C15",
+                activebackground=self.accent_blue_hover,
+                activeforeground="#090C15"
+            )
+            self.ent_chrome_min.config(state="normal", fg=self.fg_color)
+            self.ent_chrome_max.config(state="normal", fg=self.fg_color)
+            if hasattr(self, "lbl_chrome_status"):
+                self.lbl_chrome_status.config(text="● Chrome Mode: ON (Alternating)", fg=self.accent_blue)
+        else:
+            self.btn_chrome_toggle.config(
+                text="[ OFF ]",
+                bg=self.card_sec_bg,
+                fg=self.sec_fg,
+                activebackground=self.card_sec_bg,
+                activeforeground=self.fg_color
+            )
+            self.ent_chrome_min.config(state="disabled", fg=self.disabled_fg)
+            self.ent_chrome_max.config(state="disabled", fg=self.disabled_fg)
+            if hasattr(self, "lbl_chrome_status"):
+                self.lbl_chrome_status.config(text="● Chrome Mode: OFF", fg=self.sec_fg)
 
     def _toggle_hide_taskbar(self):
         """Toggle Hide from Windows Taskbar setting ON and OFF at runtime."""
@@ -909,8 +1030,32 @@ class ArrowAutomationGUI:
             if file_min_val > file_max_val:
                 messagebox.showerror("Invalid Input", "File switching minimum value cannot be greater than maximum value.")
                 return None
+
+        # 5. Google Chrome Alternating Mode Validation
+        chrome_min_val, chrome_max_val = 5, 10
+        if self.chrome_enabled:
+            cmin_str = self.ent_chrome_min.get().strip()
+            cmax_str = self.ent_chrome_max.get().strip()
+            try:
+                chrome_min_val = int(cmin_str)
+                chrome_max_val = int(cmax_str)
+            except ValueError:
+                messagebox.showerror("Invalid Input", "Please enter valid integer numbers for Chrome Min and Max minutes (e.g. 5 to 10).")
+                return None
+
+            if chrome_min_val < 1:
+                messagebox.showerror("Invalid Input", "Chrome minimum minutes value must be a positive number (at least 1).")
+                return None
+
+            if chrome_max_val < 1:
+                messagebox.showerror("Invalid Input", "Chrome maximum minutes value must be a positive number (at least 1).")
+                return None
+
+            if chrome_min_val > chrome_max_val:
+                messagebox.showerror("Invalid Input", "Chrome minimum minutes value cannot be greater than Maximum value.")
+                return None
             
-        return target_hwnd, min_val, max_val, mouse_min_val, mouse_max_val, file_min_val, file_max_val, self.file_switch_enabled
+        return target_hwnd, min_val, max_val, mouse_min_val, mouse_max_val, file_min_val, file_max_val, self.file_switch_enabled, self.chrome_enabled, chrome_min_val, chrome_max_val
 
     def _toggle_automation(self):
         """Single button toggle for START and STOP automation."""
@@ -924,7 +1069,7 @@ class ArrowAutomationGUI:
         if res is None:
             return
             
-        target_hwnd, min_val, max_val, mouse_min_val, mouse_max_val, file_min_val, file_max_val, file_switch_enabled = res
+        target_hwnd, min_val, max_val, mouse_min_val, mouse_max_val, file_min_val, file_max_val, file_switch_enabled, chrome_enabled, chrome_min_val, chrome_max_val = res
         
         # Bring selected VS Code window to foreground
         bring_window_to_front(target_hwnd)
@@ -947,6 +1092,9 @@ class ArrowAutomationGUI:
         self.btn_file_toggle.config(state="disabled")
         self.ent_file_min.config(state="disabled")
         self.ent_file_max.config(state="disabled")
+        self.btn_chrome_toggle.config(state="disabled")
+        self.ent_chrome_min.config(state="disabled")
+        self.ent_chrome_max.config(state="disabled")
         
         # Action button switches to STOP
         self.btn_action.config(
@@ -961,7 +1109,8 @@ class ArrowAutomationGUI:
         if hasattr(self, "lbl_status_target"):
             self.lbl_status_target.config(text=f"● Target: {self.combo_target.get()}", fg=self.accent_green)
         if hasattr(self, "lbl_status_arrow"):
-            self.lbl_status_arrow.config(text="● Arrow & Mouse Automation: Active", fg=self.accent_green)
+            mode_desc = "VS Code + Chrome Alternating" if chrome_enabled else "Active"
+            self.lbl_status_arrow.config(text=f"● Arrow & Mouse Automation: {mode_desc}", fg=self.accent_green)
         
         # Start Controller with target HWND and options
         self.controller.start(
@@ -973,7 +1122,10 @@ class ArrowAutomationGUI:
             file_switching_enabled=file_switch_enabled,
             mouse_min=mouse_min_val,
             mouse_max=mouse_max_val,
-            mouse_enabled=True
+            mouse_enabled=True,
+            chrome_enabled=chrome_enabled,
+            chrome_min=chrome_min_val,
+            chrome_max=chrome_max_val
         )
 
     def stop_automation(self):
@@ -993,6 +1145,10 @@ class ArrowAutomationGUI:
         if self.file_switch_enabled:
             self.ent_file_min.config(state="normal")
             self.ent_file_max.config(state="normal")
+        self.btn_chrome_toggle.config(state="normal")
+        if self.chrome_enabled:
+            self.ent_chrome_min.config(state="normal")
+            self.ent_chrome_max.config(state="normal")
         
         # Action button switches back to START
         self.btn_action.config(
@@ -1078,6 +1234,9 @@ class ArrowAutomationGUI:
         if "target_per_minute" in kwargs:
             arrow_target = kwargs["target_per_minute"]
 
+        current_mode = kwargs.get("current_mode", "VS Code")
+        remaining_sec = kwargs.get("remaining_sec", 0)
+
         def update_gui():
             if hasattr(self, "lbl_presses_min"):
                 self.lbl_big_target.config(text=f"A:{arrow_target}  M:{mouse_target}")
@@ -1096,6 +1255,20 @@ class ArrowAutomationGUI:
                     else:
                         self.lbl_file_switch_status.config(
                             text="● File Switch: OFF",
+                            fg=self.sec_fg
+                        )
+                if hasattr(self, "lbl_chrome_status"):
+                    if self.chrome_enabled:
+                        mins = remaining_sec // 60
+                        secs = remaining_sec % 60
+                        rem_str = f"{mins}m {secs}s" if remaining_sec > 0 else "Switching..."
+                        self.lbl_chrome_status.config(
+                            text=f"● Mode: {current_mode} (Remaining: {rem_str})",
+                            fg=self.accent_green if "Chrome" in current_mode else self.accent_blue
+                        )
+                    else:
+                        self.lbl_chrome_status.config(
+                            text="● Chrome Mode: OFF",
                             fg=self.sec_fg
                         )
 

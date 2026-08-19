@@ -110,6 +110,79 @@ def find_vscode_window_by_title(target_title=None):
 
     return windows[0]["hwnd"], windows[0]["display"]
 
+def is_chrome_window(hwnd, title):
+    """
+    Determines if a window handle / title belongs to a Google Chrome browser process
+    using process executable inspection (win32process / QueryFullProcessImageNameW)
+    and window title matching.
+    """
+    if sys.platform == "win32":
+        try:
+            import win32process
+            import win32api
+            import ctypes
+            import os
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if pid:
+                hProc = win32api.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+                if hProc:
+                    try:
+                        buf = ctypes.create_unicode_buffer(1024)
+                        size = ctypes.c_uint(1024)
+                        if ctypes.windll.kernel32.QueryFullProcessImageNameW(int(hProc), 0, buf, ctypes.byref(size)):
+                            exe_name = os.path.basename(buf.value).lower()
+                            known_exes = ("chrome.exe", "chrome_proxy.exe")
+                            if any(k in exe_name for k in known_exes):
+                                return True
+                    finally:
+                        win32api.CloseHandle(hProc)
+        except Exception:
+            pass
+
+    title_lower = str(title).lower()
+    if "google chrome" in title_lower or "chrome" in title_lower or title_lower.endswith("- google chrome"):
+        return True
+    return False
+
+def find_chrome_window():
+    """
+    Searches visible top-level windows for an open Google Chrome window.
+    Returns (hwnd, display_title) or (None, None).
+    """
+    if sys.platform == "win32":
+        if not win32gui:
+            return None, None
+
+        chrome_windows = []
+        def enum_windows_callback(hwnd, extra):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd).strip()
+                if title and is_chrome_window(hwnd, title):
+                    chrome_windows.append((hwnd, title))
+            return True
+
+        try:
+            win32gui.EnumWindows(enum_windows_callback, None)
+        except Exception:
+            pass
+
+        if chrome_windows:
+            return chrome_windows[0][0], chrome_windows[0][1]
+        return None, None
+
+    elif sys.platform == "darwin":
+        try:
+            cmd = "osascript -e 'tell application \"System Events\" to get name of every process whose visible is true'"
+            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL)
+            if "Google Chrome" in out or "Chrome" in out:
+                return 1, "Google Chrome"
+            return None, None
+        except Exception:
+            return None, None
+
+    return None, None
+
+
 def get_top_level_windows():
     """
     Enumerate visible top-level application windows and return ONLY Visual Studio Code windows.
