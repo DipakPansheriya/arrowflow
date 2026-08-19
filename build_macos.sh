@@ -12,8 +12,8 @@ echo "========================================================"
 
 # Step 1: Install macOS Requirements
 echo "[1/4] Installing Python requirements for macOS..."
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 # Step 2: Clean previous build artifacts
 echo "[2/4] Cleaning previous build folders..."
@@ -21,7 +21,7 @@ rm -rf build dist ArrowFlow_macOS.app ArrowFlow.dmg
 
 # Step 3: Run PyInstaller macOS spec
 echo "[3/4] Compiling ArrowFlow.app standalone executable..."
-pyinstaller --noconfirm ArrowFlow_macOS.spec
+python -m PyInstaller --noconfirm ArrowFlow_macOS.spec
 
 # Step 4: Package ArrowFlow.dmg
 echo "[4/4] Packaging ArrowFlow.dmg distribution image..."
