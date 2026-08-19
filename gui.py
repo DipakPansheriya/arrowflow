@@ -746,7 +746,7 @@ class ArrowAutomationGUI:
         _bind_mousewheel(self.scrollable_frame)
 
     def _refresh_window_list(self):
-        """Enumerate visible top-level windows and update dropdown list."""
+        """Enumerate visible top-level VS Code windows and update dropdown list."""
         current_sel = self.combo_target.get()
         windows_list = get_top_level_windows()
         
@@ -773,12 +773,12 @@ class ArrowAutomationGUI:
                 self.lbl_status_target.config(text=f"● Target: {display_names[0]}", fg=self.sec_fg)
         else:
             self.combo_target.set("")
-            self.lbl_target_conn.config(text="● No Windows Found", fg=self.accent_red)
+            self.lbl_target_conn.config(text="● No VS Code Windows Found", fg=self.accent_red)
             if hasattr(self, "lbl_status_target"):
-                self.lbl_status_target.config(text="● Target: None", fg=self.accent_red)
+                self.lbl_status_target.config(text="● Target: None (VS Code Required)", fg=self.accent_red)
 
     def _toggle_file_switching(self):
-        """Toggle File Switching feature ON and OFF."""
+        """Toggle file switching state ON/OFF."""
         self.file_switch_enabled = not self.file_switch_enabled
         if self.file_switch_enabled:
             self.btn_file_toggle.config(
@@ -790,7 +790,7 @@ class ArrowAutomationGUI:
             )
             self.ent_file_min.config(state="normal", fg=self.fg_color)
             self.ent_file_max.config(state="normal", fg=self.fg_color)
-            self.lbl_file_switch_status.config(text="● File Switch: READY", fg=self.accent_blue)
+            self.lbl_file_switch_status.config(text="● File Switch: ON (Ctrl+Shift+Tab)", fg=self.accent_blue)
         else:
             self.btn_file_toggle.config(
                 text="[ OFF ]",
@@ -830,12 +830,13 @@ class ArrowAutomationGUI:
         # 1. Target Window Validation
         selected_display = self.combo_target.get().strip()
         if not selected_display or selected_display not in self.windows_map:
-            messagebox.showerror("Target Required", "Please select a target window before starting.")
+            messagebox.showerror("VS Code Target Required", "Please launch Visual Studio Code and select an active VS Code target window before starting.")
+            self._refresh_window_list()
             return None
             
         target_hwnd = self.windows_map[selected_display]
         if not is_window_valid(target_hwnd):
-            messagebox.showerror("Target Unavailable", "The selected target window is no longer available. Please refresh and select a new target.")
+            messagebox.showerror("Target Unavailable", "The selected VS Code window is no longer available. Please refresh and select an active VS Code target.")
             self._refresh_window_list()
             return None
 

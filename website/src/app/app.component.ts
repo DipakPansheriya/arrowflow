@@ -31,24 +31,7 @@ export class AppComponent implements OnInit {
   }
 
   downloadExe(platformOverride?: 'windows' | 'macos') {
-    const platform = platformOverride || this.userOS;
-    let targetUrl = platform === 'macos' ? this.config.macosDownloadUrl : this.config.windowsDownloadUrl;
-    const localUrl = platform === 'macos' ? this.config.localMacosUrl : this.config.localWindowsUrl;
-    const filename = platform === 'macos' ? 'ArrowFlow.dmg' : 'ArrowFlow.exe';
-
-    // If downloadUrl contains default placeholder, use local static binary
-    if (targetUrl.includes('USERNAME') || targetUrl.includes('YOUR_DIRECT_EXE_DOWNLOAD_URL')) {
-      targetUrl = localUrl;
-    }
-
-    // Trigger direct browser file download
-    const anchor = document.createElement('a');
-    anchor.href = targetUrl;
-    anchor.download = filename;
-    anchor.target = '_self';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    this.config.triggerDownload(platformOverride);
   }
 
   switchOS(os: 'windows' | 'macos') {

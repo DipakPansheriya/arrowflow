@@ -30,7 +30,7 @@ echo Installing requirements...
 
 echo.
 echo Compiling executable...
-"!PY_CMD!" -m PyInstaller --clean VSCodeArrowAutomation.spec
+"!PY_CMD!" -m PyInstaller --noconfirm --onefile --windowed --name "ArrowFlow" --icon "arrowflow.ico" --add-data "arrowflow.ico;." --collect-all pynput main.py
 
 if exist "dist\ArrowFlow.exe" (
     echo.

@@ -13,6 +13,6 @@ export class DownloadCtaComponent {
   config = APP_CONFIG;
 
   downloadExe() {
-    window.open(this.config.downloadUrl, '_blank');
+    this.config.triggerDownload();
   }
 }

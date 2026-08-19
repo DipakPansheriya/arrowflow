@@ -4,7 +4,7 @@ import random
 import threading
 from pynput.keyboard import Key, Controller
 from pynput.mouse import Controller as MouseController, Button
-from window_helper import is_window_valid, send_arrow_key_to_hwnd, bring_window_to_front, get_vscode_editor_bounds
+from window_helper import is_window_valid, send_arrow_key_to_hwnd, bring_window_to_front, get_vscode_editor_bounds, find_vscode_window_by_title
 
 class ArrowAutomationController:
     """Manages per-minute randomized arrow-key press scheduling, dynamic file switching, and mouse automation for a target HWND."""
@@ -39,8 +39,49 @@ class ArrowAutomationController:
         
         self.arrow_thread = None
         
-        # Live stats
+        # Live stats & Diagnostics
         self.total_presses = 0
+        self.stats = {
+            "keyboard_events_scheduled": 0,
+            "keyboard_events_attempted": 0,
+            "keyboard_events_sent": 0,
+            "keyboard_events_failed": 0,
+            "mouse_events_scheduled": 0,
+            "mouse_events_attempted": 0,
+            "mouse_events_sent": 0,
+            "mouse_events_failed": 0,
+            "target_hwnd_refresh_count": 0,
+            "keyboard_last_success_time": None,
+            "keyboard_last_failure_time": None,
+            "last_error": None
+        }
+
+    def _log_diag(self, msg: str):
+        """Internal diagnostic logger with precise timestamps."""
+        timestamp = time.strftime("%H:%M:%S")
+        print(f"[{timestamp}] {msg}", flush=True)
+
+    def _validate_or_recover_target_hwnd(self) -> bool:
+        """
+        Validates target HWND. If invalid, attempts automatic re-discovery of VS Code window.
+        Returns True if target HWND is valid or recovered, False otherwise.
+        """
+        if not self.target_hwnd:
+            return True
+
+        if is_window_valid(self.target_hwnd):
+            return True
+
+        self._log_diag(f"[TargetHWnd] Target HWND={self.target_hwnd} invalid or closed. Attempting auto-recovery...")
+        new_hwnd, display_title = find_vscode_window_by_title()
+        if new_hwnd:
+            self.target_hwnd = new_hwnd
+            self.stats["target_hwnd_refresh_count"] += 1
+            self._log_diag(f"[TargetHWnd] Recovered active VS Code window HWND={new_hwnd} ({display_title})")
+            return True
+
+        self._log_diag(f"[TargetHWnd] Target window recovery failed.")
+        return False
 
     def start(self, min_presses: int = 10, max_presses: int = 40, target_hwnd: int = None,
               file_min: int = 1, file_max: int = 5, file_switching_enabled: bool = False,
@@ -63,6 +104,8 @@ class ArrowAutomationController:
         self.is_running = True
         self.total_presses = 0
 
+        self._log_diag(f"[Engine] Starting automation loop. Target HWND={target_hwnd}")
+
         # Launch background worker thread
         self.arrow_thread = threading.Thread(target=self._arrow_scheduler_loop, daemon=True)
         self.arrow_thread.start()
@@ -73,6 +116,7 @@ class ArrowAutomationController:
             
         self.stop_event.set()
         self.is_running = False
+        self._log_diag("[Engine] Stopping automation loop...")
         
         # Ensure worker thread terminates cleanly
         if self.arrow_thread and self.arrow_thread.is_alive() and threading.current_thread() != self.arrow_thread:
@@ -91,8 +135,8 @@ class ArrowAutomationController:
             self.keyboard.release(Key.tab)
             self.keyboard.release(Key.shift)
             self.keyboard.release(Key.ctrl)
-        except Exception:
-            pass
+        except Exception as e:
+            self._log_diag(f"[TabSwitch] Exception: {e}")
 
     def _execute_mouse_click(self):
         """Executes a single left mouse click inside active editor bounds."""
@@ -146,7 +190,11 @@ class ArrowAutomationController:
         Generate two independent randomized offset lists (Keyboard and Mouse)
         with arrow_target and mouse_target offsets across [0.10, window_sec - 0.20]
         ensuring no Keyboard timestamp and Mouse timestamp are closer than min_sep seconds.
+        Dynamically adjusts min_sep if event density is high (e.g. 50-110+ events).
         """
+        total_events = arrow_target + mouse_target
+        eff_min_sep = min(min_sep, max(0.02, (window_sec - 2.0) / max(1, total_events * 2)))
+
         for attempt in range(200):
             kbd_offsets = sorted([round(random.uniform(0.10, window_sec - 0.20), 3) for _ in range(arrow_target)])
             mouse_offsets = sorted([round(random.uniform(0.10, window_sec - 0.20), 3) for _ in range(mouse_target)])
@@ -160,8 +208,8 @@ class ArrowAutomationController:
                 while conflict and shifts < 10:
                     conflict = False
                     for k in kbd_offsets:
-                        if abs(m_val - k) < min_sep:
-                            m_val += min_sep + 0.02
+                        if abs(m_val - k) < eff_min_sep:
+                            m_val += eff_min_sep + 0.01
                             conflict = True
                             shifts += 1
                             break
@@ -188,17 +236,23 @@ class ArrowAutomationController:
         while not self.stop_event.is_set():
             window_start = time.monotonic()
 
-            # Validate target HWND before starting minute
-            if self.target_hwnd and not is_window_valid(self.target_hwnd):
-                self.stop_event.set()
-                self.is_running = False
-                if self.on_target_lost:
-                    self.on_target_lost()
-                break
+            # Validate or auto-recover target HWND before starting minute
+            if self.target_hwnd and not self._validate_or_recover_target_hwnd():
+                self._log_diag("[TargetHWnd] Target HWND check failed before minute start. Attempting auto-recovery...")
+                if not self._validate_or_recover_target_hwnd():
+                    self.stop_event.set()
+                    self.is_running = False
+                    if self.on_target_lost:
+                        self.on_target_lost()
+                    break
 
-            # Generate independent per-minute targets
+            # Generate independent per-minute targets respecting configured min-max range
             arrow_target = random.randint(self.min_presses, self.max_presses)
             mouse_target = random.randint(self.mouse_min, self.mouse_max) if self.mouse_enabled else 0
+
+            self.stats["keyboard_events_scheduled"] += arrow_target
+            self.stats["mouse_events_scheduled"] += mouse_target
+            self._log_diag(f"[Scheduler] New minute targets: Keyboard={arrow_target} (range {self.min_presses}-{self.max_presses}), Mouse={mouse_target} (range {self.mouse_min}-{self.mouse_max})")
 
             # Generate file-switch count for this minute if file switching is enabled
             if self.file_switching_enabled:
@@ -256,31 +310,39 @@ class ArrowAutomationController:
                 if self.stop_event.is_set():
                     break
 
-                # Validate target window before executing event
-                if self.target_hwnd and not is_window_valid(self.target_hwnd):
-                    self.stop_event.set()
-                    self.is_running = False
-                    if self.on_target_lost:
-                        self.on_target_lost()
-                    break
-
                 if event["type"] == "keyboard":
-                    if self.target_hwnd:
-                        success = send_arrow_key_to_hwnd(self.target_hwnd, event["key"])
-                        if not success:
-                            self.stop_event.set()
-                            self.is_running = False
-                            if self.on_target_lost:
-                                self.on_target_lost()
-                            break
-                    else:
-                        self.keyboard.press(event["pynput_key"])
-                        time.sleep(0.02)
-                        self.keyboard.release(event["pynput_key"])
+                    self.stats["keyboard_events_attempted"] += 1
+                    try:
+                        if self.target_hwnd:
+                            success = send_arrow_key_to_hwnd(self.target_hwnd, event["key"])
+                            if success:
+                                self.stats["keyboard_events_sent"] += 1
+                                self.stats["keyboard_last_success_time"] = time.monotonic()
+                            else:
+                                self.stats["keyboard_events_failed"] += 1
+                                self.stats["keyboard_last_failure_time"] = time.monotonic()
+                                self._log_diag(f"[Keyboard] Failed sending key '{event['key']}' to HWND={self.target_hwnd}")
+                        else:
+                            self.keyboard.press(event["pynput_key"])
+                            time.sleep(0.02)
+                            self.keyboard.release(event["pynput_key"])
+                            self.stats["keyboard_events_sent"] += 1
+                            self.stats["keyboard_last_success_time"] = time.monotonic()
+                    except Exception as e_k:
+                        self.stats["keyboard_events_failed"] += 1
+                        self.stats["keyboard_last_failure_time"] = time.monotonic()
+                        self._log_diag(f"[Keyboard] Exception sending key '{event['key']}': {e_k}")
+
                     kbd_done += 1
 
                 elif event["type"] == "mouse":
-                    self._execute_mouse_click()
+                    self.stats["mouse_events_attempted"] += 1
+                    try:
+                        self._execute_mouse_click()
+                        self.stats["mouse_events_sent"] += 1
+                    except Exception as e_m:
+                        self.stats["mouse_events_failed"] += 1
+                        self._log_diag(f"[Mouse] Click failed: {e_m}")
                     mouse_done += 1
 
                 # Update progress tracking
@@ -306,7 +368,7 @@ class ArrowAutomationController:
             # Minute transition: execute Ctrl+Shift+Tab file switching if enabled
             if self.file_switching_enabled and not self.stop_event.is_set() and self.file_switch_count > 0:
                 if self.target_hwnd:
-                    if not is_window_valid(self.target_hwnd):
+                    if not self._validate_or_recover_target_hwnd():
                         self.stop_event.set()
                         self.is_running = False
                         if self.on_target_lost:
@@ -320,5 +382,3 @@ class ArrowAutomationController:
                         break
                     self._send_ctrl_shift_tab()
                     time.sleep(0.1)
-
-

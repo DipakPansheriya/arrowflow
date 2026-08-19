@@ -16,8 +16,9 @@ def get_current_exe_path() -> str:
 
 def launch_updater_and_exit(new_exe_path: str, controller=None, esc_listener=None):
     """
-    Safely stops active automation and global listeners, creates a detached background updater batch script,
-    and terminates current process so Windows file locks on current executable are released.
+    Safely stops active automation and global listeners, creates a detached background updater script,
+    and terminates current process so file locks on current executable or application bundle are released.
+    Supports both Windows (.bat script) and macOS (.sh shell script).
     """
     # 1. Safely stop active keyboard/mouse automation and listeners
     if controller and hasattr(controller, 'stop'):
@@ -35,16 +36,14 @@ def launch_updater_and_exit(new_exe_path: str, controller=None, esc_listener=Non
     current_exe = get_current_exe_path()
     current_pid = os.getpid()
     target_dir = os.path.dirname(current_exe)
-    exe_name = os.path.basename(current_exe)
-    backup_exe = os.path.join(target_dir, f"{exe_name}.bak")
 
-    # Create temporary updater script path
-    temp_dir = tempfile.gettempdir()
-    updater_bat = os.path.join(temp_dir, "arrowflow_updater.bat")
+    if sys.platform == "win32":
+        exe_name = os.path.basename(current_exe)
+        backup_exe = os.path.join(target_dir, f"{exe_name}.bak")
+        temp_dir = tempfile.gettempdir()
+        updater_bat = os.path.join(temp_dir, "arrowflow_updater.bat")
 
-    # Construct robust Windows batch script content
-    # Handles PID exit wait, backup creation, EXE replacement, permission error fallback, cleanup, and restart.
-    bat_content = f"""@echo off
+        bat_content = f"""@echo off
 set "PID={current_pid}"
 set "NEW_EXE={new_exe_path}"
 set "TARGET_EXE={current_exe}"
@@ -83,16 +82,42 @@ start "" "%TARGET_EXE%"
 rem Self delete updater script
 del "%~f0"
 """
+        with open(updater_bat, "w", encoding="utf-8") as f:
+            f.write(bat_content)
 
-    with open(updater_bat, "w", encoding="utf-8") as f:
-        f.write(bat_content)
-
-    # Launch batch script in detached background mode (no visible CMD window)
-    creationflags = 0
-    if os.name == "nt":
         creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW
+        subprocess.Popen(["cmd.exe", "/c", updater_bat], creationflags=creationflags, close_fds=True)
+        sys.exit(0)
 
-    subprocess.Popen(["cmd.exe", "/c", updater_bat], creationflags=creationflags, close_fds=True)
+    elif sys.platform == "darwin":
+        temp_dir = tempfile.gettempdir()
+        updater_sh = os.path.join(temp_dir, "arrowflow_updater.sh")
 
-    # Clean exit current process
-    sys.exit(0)
+        sh_content = f"""#!/bin/bash
+PID={current_pid}
+NEW_FILE="{new_exe_path}"
+TARGET_FILE="{current_exe}"
+
+while kill -0 $PID 2>/dev/null; do
+    sleep 0.5
+done
+
+sleep 0.5
+
+if [ -f "$NEW_FILE" ]; then
+    cp -f "$NEW_FILE" "$TARGET_FILE" 2>/dev/null || cp -R -f "$NEW_FILE" "$TARGET_FILE" 2>/dev/null
+    rm -rf "$NEW_FILE"
+fi
+
+open "$TARGET_FILE"
+rm -f "$0"
+"""
+        with open(updater_sh, "w", encoding="utf-8") as f:
+            f.write(sh_content)
+
+        os.chmod(updater_sh, 0o755)
+        subprocess.Popen(["/bin/bash", updater_sh], close_fds=True)
+        sys.exit(0)
+
+    else:
+        sys.exit(0)

@@ -50,6 +50,6 @@ export class HeroComponent {
   }
 
   downloadExe() {
-    window.open(this.config.downloadUrl, '_blank');
+    this.config.triggerDownload();
   }
 }

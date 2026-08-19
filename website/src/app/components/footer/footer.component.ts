@@ -14,6 +14,6 @@ export class FooterComponent {
   currentYear = new Date().getFullYear();
 
   downloadExe() {
-    window.open(this.config.downloadUrl, '_blank');
+    this.config.triggerDownload();
   }
 }

@@ -1,4 +1,5 @@
 import sys
+import time
 import subprocess
 
 if sys.platform == "win32":
@@ -31,9 +32,87 @@ MAC_KEY_MAP = {
     "right": 124
 }
 
+def get_child_render_hwnd(parent_hwnd):
+    """
+    Locates active child rendering window (e.g., Chrome_RenderWidgetHostHWND)
+    inside a top-level Visual Studio Code window handle.
+    """
+    if sys.platform != "win32" or not win32gui or not parent_hwnd:
+        return parent_hwnd
+
+    child_hwnds = []
+    def enum_child_cb(child_hwnd, param):
+        try:
+            class_name = win32gui.GetClassName(child_hwnd)
+            if "Chrome_RenderWidgetHostHWND" in class_name or "Render" in class_name:
+                child_hwnds.append(child_hwnd)
+        except Exception:
+            pass
+        return True
+
+    try:
+        win32gui.EnumChildWindows(parent_hwnd, enum_child_cb, None)
+        if child_hwnds:
+            return child_hwnds[0]
+    except Exception:
+        pass
+
+    return parent_hwnd
+
+def is_vscode_window(hwnd, title):
+    """
+    Determines if a window handle / title belongs to a Visual Studio Code process
+    using process executable inspection (win32process / QueryFullProcessImageNameW)
+    and window title matching.
+    """
+    if sys.platform == "win32":
+        try:
+            import win32process
+            import win32api
+            import ctypes
+            import os
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            if pid:
+                hProc = win32api.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+                if hProc:
+                    try:
+                        buf = ctypes.create_unicode_buffer(1024)
+                        size = ctypes.c_uint(1024)
+                        if ctypes.windll.kernel32.QueryFullProcessImageNameW(int(hProc), 0, buf, ctypes.byref(size)):
+                            exe_name = os.path.basename(buf.value).lower()
+                            known_exes = ("code.exe", "code - insiders.exe", "code-insiders.exe", "vscodium.exe")
+                            if any(k in exe_name for k in known_exes):
+                                return True
+                    finally:
+                        win32api.CloseHandle(hProc)
+        except Exception:
+            pass
+
+    title_lower = str(title).lower()
+    if "visual studio code" in title_lower or "vs code" in title_lower or title_lower.endswith(" - code"):
+        return True
+    return False
+
+def find_vscode_window_by_title(target_title=None):
+    """
+    Searches visible top-level windows for an active Visual Studio Code window.
+    If target_title is provided, attempts exact or substring match.
+    Returns (hwnd, display_title) or (None, None).
+    """
+    windows = get_top_level_windows()
+    if not windows:
+        return None, None
+
+    if target_title:
+        for w in windows:
+            if target_title in w["title"] or target_title in w["display"]:
+                return w["hwnd"], w["display"]
+
+    return windows[0]["hwnd"], windows[0]["display"]
+
 def get_top_level_windows():
     """
-    Enumerate all visible top-level application windows on Windows or macOS.
+    Enumerate visible top-level application windows and return ONLY Visual Studio Code windows.
     Returns a list of dicts: [{'hwnd': int/str, 'title': str, 'display': str}, ...]
     """
     if sys.platform == "win32":
@@ -45,7 +124,8 @@ def get_top_level_windows():
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd).strip()
                 if title and title not in ("Program Manager", "Settings", "Microsoft Text Input Application"):
-                    windows.append((hwnd, title))
+                    if is_vscode_window(hwnd, title):
+                        windows.append((hwnd, title))
             return True
 
         win32gui.EnumWindows(enum_windows_callback, None)
@@ -70,13 +150,9 @@ def get_top_level_windows():
                 "display": display_name
             })
 
-        vscode_wins = [w for w in result if "Visual Studio Code" in w["title"] or "VS Code" in w["title"]]
-        other_wins = [w for w in result if w not in vscode_wins]
-
-        return vscode_wins + other_wins
+        return result
 
     elif sys.platform == "darwin":
-        # macOS implementation via Quartz / osascript
         windows = []
         try:
             cmd = "osascript -e 'tell application \"System Events\" to get name of every process whose visible is true'"
@@ -84,21 +160,18 @@ def get_top_level_windows():
             app_names = [name.strip() for name in out.strip().split(',') if name.strip()]
             
             vscode_apps = []
-            other_apps = []
             
             for idx, app in enumerate(app_names, 1):
-                win_item = {
-                    "hwnd": idx,
-                    "title": app if ("Code" not in app and "Visual Studio" not in app) else f"Visual Studio Code - ({app})",
-                    "display": app if ("Code" not in app and "Visual Studio" not in app) else f"Visual Studio Code - ({app})",
-                    "app_name": app
-                }
-                if "Code" in app or "Visual Studio" in app or "VSCode" in app:
+                if "Code" in app or "Visual Studio" in app or "VSCode" in app or "VSCodium" in app:
+                    win_item = {
+                        "hwnd": idx,
+                        "title": f"Visual Studio Code - ({app})",
+                        "display": f"Visual Studio Code - ({app})",
+                        "app_name": app
+                    }
                     vscode_apps.append(win_item)
-                else:
-                    other_apps.append(win_item)
                     
-            return vscode_apps + other_apps
+            return vscode_apps
         except Exception:
             return [{"hwnd": 1, "title": "Visual Studio Code", "display": "Visual Studio Code (Default)", "app_name": "Visual Studio Code"}]
 
@@ -164,21 +237,62 @@ def bring_window_to_front(hwnd):
 def send_arrow_key_to_hwnd(hwnd, key_name):
     """
     Send an arrow key event (up/down/left/right) to a target window HWND / app
-    on Windows or macOS.
+    on Windows or macOS using hardware-level input injection (keybd_event / SendInput)
+    so low-level OS hooks (like Upwork activity tracker) and target windows process all events.
+    Returns True on clean dispatch, False on failure.
     """
     if sys.platform == "win32":
         if not win32api or not win32gui or not win32con:
             return False
-        if not is_window_valid(hwnd):
+        if hwnd and not is_window_valid(hwnd):
             return False
 
-        vk_code = VK_MAP.get(str(key_name).lower().replace("key.", ""))
+        key_clean = str(key_name).lower().replace("key.", "")
+        vk_code = VK_MAP.get(key_clean)
         if not vk_code:
             return False
 
+        # Calculate OEM Scan Code
+        scan_code = 0
         try:
-            win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-            win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+            scan_code = win32api.MapVirtualKey(vk_code, 0)
+        except Exception:
+            scan_code = 0
+
+        # Bring target window to foreground if valid and not currently foreground
+        if hwnd and is_window_valid(hwnd):
+            try:
+                if win32gui.GetForegroundWindow() != hwnd:
+                    bring_window_to_front(hwnd)
+            except Exception:
+                pass
+
+        try:
+            # Extended key flag (0x0001) is REQUIRED for Windows Arrow Keys
+            flags_down = win32con.KEYEVENTF_EXTENDEDKEY
+            flags_up   = win32con.KEYEVENTF_EXTENDEDKEY | win32con.KEYEVENTF_KEYUP
+
+            # Send hardware-level KEYDOWN event to Windows OS Input Queue (triggers WH_KEYBOARD_LL)
+            win32api.keybd_event(vk_code, scan_code, flags_down, 0)
+            
+            # Short inter-press delay
+            time.sleep(0.015)
+
+            # Send hardware-level KEYUP event to Windows OS Input Queue
+            win32api.keybd_event(vk_code, scan_code, flags_up, 0)
+
+            # Secondary WM_KEYDOWN/WM_KEYUP backup for specific child targets
+            if hwnd:
+                child_target = get_child_render_hwnd(hwnd)
+                lparam_down = 1 | (scan_code << 16) | (1 << 24)
+                lparam_up   = 1 | (scan_code << 16) | (1 << 24) | (1 << 30) | (1 << 31)
+                try:
+                    if child_target and win32gui.IsWindow(child_target):
+                        win32api.PostMessage(child_target, win32con.WM_KEYDOWN, vk_code, lparam_down)
+                        win32api.PostMessage(child_target, win32con.WM_KEYUP, vk_code, lparam_up)
+                except Exception:
+                    pass
+
             return True
         except Exception:
             return False
@@ -291,4 +405,3 @@ def check_macos_permissions():
         pass
 
     return True, ""
-

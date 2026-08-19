@@ -20,9 +20,10 @@ def fetch_update_manifest(manifest_url: str = None, timeout: int = 6) -> dict:
         with open(local_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
+    os_name = "macOS" if sys.platform == "darwin" else "Windows"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": f"ArrowFlow/{CURRENT_VERSION} (Windows UpdateChecker)"}
+        headers={"User-Agent": f"ArrowFlow/{CURRENT_VERSION} ({os_name} UpdateChecker)"}
     )
     
     # Create unverified context fallback if local SSL certificates are missing/outdated
