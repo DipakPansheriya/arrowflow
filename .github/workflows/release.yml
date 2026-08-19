@@ -2,12 +2,49 @@ name: Automated Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
+  # ── Step 0: Compute the next version tag ─────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      new_tag: ${{ steps.bump.outputs.new_tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full history to read all tags
+
+      - name: Compute next patch version
+        id: bump
+        run: |
+          # Get the latest vX.Y.Z tag (fall back to v0.0.0 if none exist)
+          LATEST=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v0.0.0"
+          fi
+          echo "Latest tag: $LATEST"
+
+          # Strip leading 'v' and split into parts
+          VERSION="${LATEST#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          # Bump patch number
+          NEW_PATCH=$((PATCH + 1))
+          NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "New tag: $NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+  # ── Step 1: Build Windows ─────────────────────────────────────────────────
   build-windows:
+    needs: version
     runs-on: windows-latest
     steps:
       - name: Checkout Repository
@@ -21,11 +58,20 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
       - name: Build Windows Executable
         run: |
           python -m PyInstaller --noconfirm --onefile --windowed --name "ArrowFlow" --icon "arrowflow.ico" --add-data "arrowflow.ico;." --collect-all pynput main.py
+
+      - name: Verify ArrowFlow.exe exists
+        shell: pwsh
+        run: |
+          if (-Not (Test-Path "dist/ArrowFlow.exe")) {
+            Write-Error "ERROR: dist/ArrowFlow.exe was not produced by the build!"
+            exit 1
+          }
+          Write-Host "ArrowFlow.exe verified OK."
 
       - name: Upload Windows Asset
         uses: actions/upload-artifact@v4
@@ -33,7 +79,9 @@ jobs:
           name: windows-asset
           path: dist/ArrowFlow.exe
 
+  # ── Step 2: Build macOS ───────────────────────────────────────────────────
   build-macos:
+    needs: version
     runs-on: macos-latest
     steps:
       - name: Checkout Repository
@@ -49,18 +97,30 @@ jobs:
           chmod +x build_macos.sh
           ./build_macos.sh
 
+      - name: Verify ArrowFlow.dmg exists
+        run: |
+          if [ ! -f "dist/ArrowFlow.dmg" ]; then
+            echo "ERROR: dist/ArrowFlow.dmg was not produced by the build!"
+            exit 1
+          fi
+          echo "ArrowFlow.dmg verified OK."
+
       - name: Upload macOS Asset
         uses: actions/upload-artifact@v4
         with:
           name: macos-asset
           path: dist/ArrowFlow.dmg
 
+  # ── Step 3: Tag & Release (only after both builds succeed) ────────────────
   create-release:
-    needs: [build-windows, build-macos]
+    needs: [version, build-windows, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Download Windows Asset
         uses: actions/download-artifact@v4
         with:
@@ -73,16 +133,24 @@ jobs:
           name: macos-asset
           path: assets
 
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ needs.version.outputs.new_tag }}
+          git push origin ${{ needs.version.outputs.new_tag }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            assets/ArrowFlow.exe
-            assets/ArrowFlow.dmg
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ needs.version.outputs.new_tag }}
+          name: Release ${{ needs.version.outputs.new_tag }}
           generate_release_notes: true
           draft: false
           prerelease: false
+          files: |
+            assets/ArrowFlow.exe
+            assets/ArrowFlow.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
