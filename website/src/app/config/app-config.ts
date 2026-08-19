@@ -27,26 +27,24 @@ export const APP_CONFIG = {
   macosDownloadUrl: 'https://github.com/DipakPansheriya/arrowflow/releases/latest/download/ArrowFlow.dmg',
   localMacosUrl: '/ArrowFlow.dmg',
 
-  triggerDownload(platformOverride?: 'windows' | 'macos') {
-    if (typeof window === 'undefined') return;
-
-    let isMac = false;
-    if (window.navigator) {
-      const platform = window.navigator.platform.toLowerCase();
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      isMac = platform.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os');
+  getDownloadInfo(): { url: string; platformName: string; isSupported: boolean; platform: string } {
+    if (typeof window === 'undefined') {
+      return { url: this.windowsDownloadUrl, platformName: 'Windows', isSupported: true, platform: 'windows' };
     }
 
-    const platform = platformOverride || (isMac ? 'macos' : 'windows');
-    const localUrl = platform === 'macos' ? this.localMacosUrl : this.localWindowsUrl;
-    const filename = platform === 'macos' ? 'ArrowFlow.dmg' : 'ArrowFlow.exe';
-
-    const anchor = document.createElement('a');
-    anchor.href = localUrl;
-    anchor.download = filename;
-    anchor.target = '_self';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    const platform = window.navigator.platform.toLowerCase();
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    
+    const isMac = platform.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os');
+    const isWin = platform.includes('win') || userAgent.includes('windows');
+    
+    if (isMac) {
+      return { url: this.macosDownloadUrl, platformName: 'macOS', isSupported: true, platform: 'macos' };
+    } else if (isWin) {
+      return { url: this.windowsDownloadUrl, platformName: 'Windows', isSupported: true, platform: 'windows' };
+    } else {
+      // Default to windows for unsupported, but mark as unsupported
+      return { url: this.windowsDownloadUrl, platformName: 'Unsupported', isSupported: false, platform: 'other' };
+    }
   }
 };

@@ -16,14 +16,32 @@
       </p>
 
       <div class="hero-buttons">
-        <button class="btn-primary" (click)="downloadExe()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Download for Windows</span>
-        </button>
+        <ng-container *ngIf="downloadInfo.isSupported; else unsupportedPlatform">
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+            <a class="btn-primary" [href]="downloadInfo.url">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download for {{ downloadInfo.platformName }}</span>
+            </a>
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-left: 5px;">
+              <a *ngIf="downloadInfo.platform === 'windows'" [href]="config.macosDownloadUrl" style="color: #00f0ff; text-decoration: none;">Also available for macOS</a>
+              <a *ngIf="downloadInfo.platform === 'macos'" [href]="config.windowsDownloadUrl" style="color: #00f0ff; text-decoration: none;">Also available for Windows</a>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #unsupportedPlatform>
+          <div style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+            <div style="color: #ffaa00; font-size: 0.95rem;">ArrowFlow desktop app is currently available for Windows and macOS.</div>
+            <div style="display: flex; gap: 12px;">
+              <a class="btn-primary" style="padding: 12px 20px;" [href]="config.windowsDownloadUrl">Download for Windows</a>
+              <a class="btn-primary" style="padding: 12px 20px;" [href]="config.macosDownloadUrl">Download for macOS</a>
+            </div>
+          </div>
+        </ng-template>
 
         <a href="#documentation" class="btn-secondary">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

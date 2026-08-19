@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { APP_CONFIG } from '../../config/app-config';
 
@@ -9,8 +9,13 @@ import { APP_CONFIG } from '../../config/app-config';
   templateUrl: './hero.component.html',
   styleUrls: ['./hero.component.scss']
 })
-export class HeroComponent {
+export class HeroComponent implements OnInit {
   config = APP_CONFIG;
+  downloadInfo: any = { isSupported: true, platformName: 'Windows', url: '#', platform: 'windows' };
+
+  ngOnInit() {
+    this.downloadInfo = this.config.getDownloadInfo();
+  }
 
   // Interactive Live Mockup State
   mockupRunning = false;
