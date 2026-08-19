@@ -31,7 +31,10 @@ export class AppComponent implements OnInit {
   }
 
   downloadExe(platformOverride?: 'windows' | 'macos') {
-    this.config.triggerDownload(platformOverride);
+    const targetUrl = platformOverride === 'macos' ? this.config.macosDownloadUrl 
+                    : platformOverride === 'windows' ? this.config.windowsDownloadUrl 
+                    : this.config.getDownloadInfo().url;
+    window.location.href = targetUrl;
   }
 
   switchOS(os: 'windows' | 'macos') {
