@@ -7,7 +7,7 @@ import os
 CURRENT_VERSION = "1.0.0"
 
 # Default HTTPS URL for the update manifest.
-UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/arrowflow/arrowflow-desktop/main/latest.json"
+UPDATE_MANIFEST_URL = "https://arrowflow.web.app/downloads/latest.json"
 
 def get_update_manifest_url() -> str:
     """

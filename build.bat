@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo Building ArrowFlow.exe with PyInstaller
+echo Building ArrowFlow.exe and ArrowFlowUpdater.exe
 echo ========================================================
 
 set "PY_CMD="
@@ -29,19 +29,27 @@ echo Installing requirements...
 "!PY_CMD!" -m pip install -r requirements.txt
 
 echo.
-echo Compiling executable...
-"!PY_CMD!" -m PyInstaller --noconfirm --onefile --windowed --name "ArrowFlow" --icon "arrowflow.ico" --add-data "arrowflow.ico;." --collect-all pynput main.py
+echo Compiling ArrowFlow.exe...
+"!PY_CMD!" -m PyInstaller --noconfirm ArrowFlow.spec
 
-if exist "dist\ArrowFlow.exe" (
+echo.
+echo Compiling ArrowFlowUpdater.exe...
+"!PY_CMD!" -m PyInstaller --noconfirm ArrowFlowUpdater.spec
+
+if exist "dist\ArrowFlow.exe" if exist "dist\ArrowFlowUpdater.exe" (
     echo.
     echo ========================================================
     echo BUILD SUCCESSFUL!
-    echo Executable created at: dist\ArrowFlow.exe
+    echo Main App:   dist\ArrowFlow.exe
+    echo Updater:    dist\ArrowFlowUpdater.exe
     echo ========================================================
-) else (
-    echo.
-    echo ========================================================
-    echo BUILD FAILED! Check console output above for details.
-    echo ========================================================
+    goto end
 )
+
+echo.
+echo ========================================================
+echo BUILD FAILED! Check console output above for details.
+echo ========================================================
+
+:end
 pause

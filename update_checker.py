@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 import ssl
 import os
+import sys
 from version import CURRENT_VERSION, get_update_manifest_url, is_newer_version
 
 def fetch_update_manifest(manifest_url: str = None, timeout: int = 6) -> dict:
