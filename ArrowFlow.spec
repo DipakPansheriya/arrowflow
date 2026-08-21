@@ -3,9 +3,21 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('arrowflow.ico', '.')]
 binaries = []
-hiddenimports = []
+hiddenimports = [
+    'auth',
+    'auth.auth_service',
+    'auth.firebase_client',
+    'auth.totp_manager',
+    'pyotp',
+    'qrcode',
+    'PIL',
+    'PIL.ImageTk',
+    'PIL.Image'
+]
 tmp_ret = collect_all('pynput')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_qr = collect_all('qrcode')
+datas += tmp_qr[0]; binaries += tmp_qr[1]; hiddenimports += tmp_qr[2]
 
 
 a = Analysis(

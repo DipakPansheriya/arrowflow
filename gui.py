@@ -10,6 +10,9 @@ from window_helper import get_top_level_windows, is_window_valid, bring_window_t
 from version import CURRENT_VERSION
 from update_checker import check_for_updates_async, download_file_with_progress, calculate_sha256
 from updater import launch_updater_and_exit
+from auth.auth_service import AuthService
+from auth.totp_manager import TOTPManager
+from PIL import Image, ImageTk
 
 # Compact Spacing Design System Constants for 540x660 Layout
 OUTER_PAD = 18            # Left & Right outer window padding
@@ -123,6 +126,11 @@ class ArrowAutomationGUI:
         self.last_esc_time = 0.0
         self.last_alt_space_time = 0.0
         
+        # 2FA Authentication Service & Image References
+        self.auth_service = AuthService()
+        self.auth_frame = None
+        self.qr_img_ref = None
+        
         # Build Password Lock Screen initially
         self._build_login_ui()
 
@@ -135,9 +143,25 @@ class ArrowAutomationGUI:
         y = max(0, (screen_height - height) // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
+    def _clean_auth_frames(self):
+        """Destroy any active authentication frames."""
+        if hasattr(self, "login_frame") and self.login_frame:
+            try:
+                self.login_frame.destroy()
+            except Exception:
+                pass
+            self.login_frame = None
+        if self.auth_frame:
+            try:
+                self.auth_frame.destroy()
+            except Exception:
+                pass
+            self.auth_frame = None
+
     def _build_login_ui(self):
-        """Build professional password lock screen interface (420x480)."""
-        self._center_window(420, 480)
+        """Build professional password lock screen interface (420x500)."""
+        self._clean_auth_frames()
+        self._center_window(420, 500)
         self.login_frame = tk.Frame(self.root, bg=self.bg_color)
         self.login_frame.pack(fill="both", expand=True)
         
@@ -146,16 +170,16 @@ class ArrowAutomationGUI:
         
         # Lock Icon & Title
         lbl_icon = tk.Label(card_outer, text="⚡", font=("Segoe UI", 28), bg=self.card_bg, fg=self.accent_blue)
-        lbl_icon.pack(pady=(22, 2))
+        lbl_icon.pack(pady=(18, 2))
         
         lbl_title = tk.Label(card_outer, text="ArrowFlow", font=("Segoe UI", 16, "bold"), bg=self.card_bg, fg=self.fg_color)
         lbl_title.pack()
         
         lbl_sub = tk.Label(card_outer, text=f"v{CURRENT_VERSION} · Secure Access Required", font=("Segoe UI", 9), bg=self.card_bg, fg=self.sec_fg)
-        lbl_sub.pack(pady=(2, 16))
+        lbl_sub.pack(pady=(2, 14))
         
         # Input Section
-        lbl_pwd_tag = tk.Label(card_outer, text="PASSWORD", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.sec_fg)
+        lbl_pwd_tag = tk.Label(card_outer, text="ADMIN PASSWORD", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.sec_fg)
         lbl_pwd_tag.pack(anchor="w", padx=30, pady=(0, 4))
         
         self.ent_pwd = tk.Entry(
@@ -184,9 +208,9 @@ class ArrowAutomationGUI:
         )
         self.lbl_login_err.pack(pady=(0, 4))
         
-        btn_unlock = tk.Button(
+        self.btn_unlock = tk.Button(
             card_outer,
-            text="UNLOCK",
+            text="CONTINUE",
             font=("Segoe UI", 11, "bold"),
             bg=self.accent_green,
             fg="#090C15",
@@ -198,32 +222,390 @@ class ArrowAutomationGUI:
             relief="flat",
             command=self._attempt_unlock
         )
-        btn_unlock.pack(fill="x", padx=30, pady=(0, 10))
+        self.btn_unlock.pack(fill="x", padx=30, pady=(0, 10))
         
         lbl_hint = tk.Label(card_outer, text="Press ENTER to continue", font=("Segoe UI", 9), bg=self.card_bg, fg=self.muted_fg)
-        lbl_hint.pack(pady=(0, 18))
+        lbl_hint.pack(pady=(0, 14))
 
     def _attempt_unlock(self):
-        """Validate entered password against SHA-256 hash."""
+        """Validate entered password and query Firebase for 2FA state."""
         entered = self.ent_pwd.get()
-        entered_hash = hashlib.sha256(entered.encode("utf-8")).hexdigest()
-        
-        if entered_hash == self.PASSWORD_HASH:
-            self.is_authenticated = True
-            self.login_frame.destroy()
-            self._center_window(560, 680)
-            self._build_main_ui()
-            
-            if sys.platform == "darwin":
-                trusted, perm_msg = check_macos_permissions()
-                if not trusted and perm_msg:
-                    messagebox.showwarning("macOS Permission Required", perm_msg)
-                    
-            self._start_background_update_check(silent=True)
-        else:
+        if not entered:
+            self.lbl_login_err.config(text="Please enter password", fg=self.accent_red)
+            return
+
+        if not self.auth_service.verify_password(entered):
             self.ent_pwd.delete(0, tk.END)
-            self.lbl_login_err.config(text="Incorrect password")
+            self.lbl_login_err.config(text="Incorrect password", fg=self.accent_red)
             self.ent_pwd.focus()
+            return
+
+        # Password is valid -> Query Firebase for authenticator secret status
+        self.lbl_login_err.config(text="● Checking Firebase 2FA security...", fg=self.accent_blue)
+        self.btn_unlock.config(state="disabled", text="CONNECTING...")
+        self.root.update_idletasks()
+
+        def _fetch_2fa_state():
+            try:
+                state = self.auth_service.initialize_authenticator_state()
+                self.root.after(0, lambda: self._on_2fa_state_ready(state))
+            except Exception as e:
+                self.root.after(0, lambda: self._on_2fa_state_error(str(e)))
+
+        threading.Thread(target=_fetch_2fa_state, daemon=True).start()
+
+    def _on_2fa_state_ready(self, state):
+        """Handle 2FA state transition from Firebase."""
+        self._clean_auth_frames()
+        if state.get("is_new"):
+            # First-time registration -> Display Authenticator Setup Screen
+            self._build_setup_2fa_ui(state["secret_key"])
+        else:
+            # Existing secret -> Display OTP Verification Screen
+            self._build_verify_2fa_ui()
+
+    def _on_2fa_state_error(self, err_msg):
+        """Handle network or Firebase connectivity errors."""
+        self.btn_unlock.config(state="normal", text="CONTINUE")
+        self.lbl_login_err.config(text="Firebase connection error. Check internet.", fg=self.accent_red)
+
+    def _build_setup_2fa_ui(self, secret_key: str):
+        """Build initial Authenticator Setup UI with QR Code and Secret Key (480x640)."""
+        self._clean_auth_frames()
+        self._center_window(480, 640)
+        self.auth_frame = tk.Frame(self.root, bg=self.bg_color)
+        self.auth_frame.pack(fill="both", expand=True)
+
+        card_outer = tk.Frame(self.auth_frame, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        card_outer.pack(anchor="center", expand=True, padx=20, pady=16, fill="both")
+
+        # Header
+        lbl_title = tk.Label(card_outer, text="⚡ Set Up Authenticator 2FA", font=("Segoe UI", 14, "bold"), bg=self.card_bg, fg=self.fg_color)
+        lbl_title.pack(pady=(12, 2))
+
+        lbl_sub = tk.Label(card_outer, text="Scan with Google Authenticator or Microsoft Authenticator", font=("Segoe UI", 8), bg=self.card_bg, fg=self.sec_fg)
+        lbl_sub.pack(pady=(0, 8))
+
+        # QR Code Display Container
+        qr_border_frame = tk.Frame(card_outer, bg="#FFFFFF", padx=6, pady=6, bd=1, relief="solid")
+        qr_border_frame.pack(anchor="center", pady=(0, 8))
+
+        try:
+            self.qr_img_ref = TOTPManager.generate_tk_qr_image(secret_key, target_size=(140, 140))
+            lbl_qr = tk.Label(qr_border_frame, image=self.qr_img_ref, bg="#FFFFFF")
+            lbl_qr.pack()
+        except Exception:
+            lbl_qr = tk.Label(qr_border_frame, text="QR Preview", font=("Segoe UI", 10), bg="#FFFFFF", fg="#090C15", width=16, height=7)
+            lbl_qr.pack()
+
+        # Secret Key (Manual Entry)
+        key_box = tk.Frame(card_outer, bg=self.card_sec_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        key_box.pack(fill="x", padx=24, pady=(0, 10))
+
+        key_inner = tk.Frame(key_box, bg=self.card_sec_bg)
+        key_inner.pack(fill="x", padx=10, pady=6)
+
+        formatted_secret = TOTPManager.format_secret_display(secret_key)
+        lbl_key_val = tk.Label(key_inner, text=formatted_secret, font=("Consolas", 11, "bold"), bg=self.card_sec_bg, fg=self.accent_blue)
+        lbl_key_val.pack(side="left")
+
+        def _copy_key():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(secret_key)
+            btn_copy.config(text="✓ Copied!", bg=self.accent_green, fg="#090C15")
+            self.root.after(2000, lambda: btn_copy.config(text="📋 Copy", bg=self.card_bg, fg=self.accent_blue))
+
+        btn_copy = tk.Button(
+            key_inner,
+            text="📋 Copy",
+            font=("Segoe UI", 8, "bold"),
+            bg=self.card_bg,
+            fg=self.accent_blue,
+            activebackground=self.accent_blue,
+            activeforeground="#090C15",
+            bd=0,
+            cursor="hand2",
+            padx=8,
+            pady=2,
+            relief="flat",
+            command=_copy_key
+        )
+        btn_copy.pack(side="right")
+
+        # 6-Digit Verification Section
+        lbl_code_tag = tk.Label(card_outer, text="ENTER 6-DIGIT CODE FROM APP", font=("Segoe UI", 8, "bold"), bg=self.card_bg, fg=self.sec_fg)
+        lbl_code_tag.pack(anchor="w", padx=24, pady=(0, 3))
+
+        self.ent_setup_otp = tk.Entry(
+            card_outer,
+            width=14,
+            font=("Segoe UI", 16, "bold"),
+            bg=self.input_bg,
+            fg=self.fg_color,
+            insertbackground=self.accent_blue,
+            bd=1,
+            relief="solid",
+            highlightbackground=self.border_color,
+            justify="center"
+        )
+        self.ent_setup_otp.pack(padx=24, pady=(0, 4), ipady=3)
+        self.ent_setup_otp.focus()
+        self.ent_setup_otp.bind("<Return>", lambda event: self._attempt_setup_verify())
+
+        self.lbl_setup_err = tk.Label(
+            card_outer,
+            text="",
+            font=("Segoe UI", 8, "bold"),
+            bg=self.card_bg,
+            fg=self.accent_red
+        )
+        self.lbl_setup_err.pack(pady=(0, 4))
+
+        btn_confirm = tk.Button(
+            card_outer,
+            text="VERIFY & COMPLETE SETUP",
+            font=("Segoe UI", 10, "bold"),
+            bg=self.accent_green,
+            fg="#090C15",
+            activebackground=self.accent_blue_hover,
+            activeforeground="#090C15",
+            bd=0,
+            cursor="hand2",
+            height=2,
+            relief="flat",
+            command=self._attempt_setup_verify
+        )
+        btn_confirm.pack(fill="x", padx=24, pady=(0, 6))
+
+        lbl_secure_note = tk.Label(
+            card_outer,
+            text="🔒 Key is stored in Firebase for seamless recovery.",
+            font=("Segoe UI", 8),
+            bg=self.card_bg,
+            fg=self.muted_fg
+        )
+        lbl_secure_note.pack(pady=(0, 8))
+
+    def _attempt_setup_verify(self):
+        """Validate 6-digit confirmation OTP on initial setup."""
+        entered = self.ent_setup_otp.get()
+        if not entered:
+            self.lbl_setup_err.config(text="Please enter 6-digit code")
+            return
+
+        if self.auth_service.verify_otp_code(entered):
+            self.lbl_setup_err.config(text="✓ Authenticator verified!", fg=self.accent_green)
+            self.root.after(400, self._unlock_and_launch_main_app)
+        else:
+            self.ent_setup_otp.delete(0, tk.END)
+            self.lbl_setup_err.config(text="Invalid OTP code. Check your authenticator app.", fg=self.accent_red)
+            self.ent_setup_otp.focus()
+
+    def _build_verify_2fa_ui(self):
+        """Build regular OTP verification UI for subsequent logins (440x510)."""
+        self._clean_auth_frames()
+        self._center_window(440, 510)
+        self.auth_frame = tk.Frame(self.root, bg=self.bg_color)
+        self.auth_frame.pack(fill="both", expand=True)
+
+        card_outer = tk.Frame(self.auth_frame, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        card_outer.pack(anchor="center", expand=True, padx=26, pady=24, fill="both")
+
+        # Shield Icon & Title
+        lbl_icon = tk.Label(card_outer, text="🛡️", font=("Segoe UI", 26), bg=self.card_bg, fg=self.accent_blue)
+        lbl_icon.pack(pady=(16, 2))
+
+        lbl_title = tk.Label(card_outer, text="Two-Factor Authentication", font=("Segoe UI", 15, "bold"), bg=self.card_bg, fg=self.fg_color)
+        lbl_title.pack()
+
+        lbl_sub = tk.Label(card_outer, text="Enter the 6-digit code from your Authenticator app", font=("Segoe UI", 9), bg=self.card_bg, fg=self.sec_fg)
+        lbl_sub.pack(pady=(2, 16))
+
+        # OTP Entry
+        lbl_otp_tag = tk.Label(card_outer, text="6-DIGIT AUTHENTICATOR CODE", font=("Segoe UI", 8, "bold"), bg=self.card_bg, fg=self.sec_fg)
+        lbl_otp_tag.pack(anchor="w", padx=28, pady=(0, 4))
+
+        self.ent_otp = tk.Entry(
+            card_outer,
+            width=12,
+            font=("Segoe UI", 18, "bold"),
+            bg=self.input_bg,
+            fg=self.fg_color,
+            insertbackground=self.accent_blue,
+            bd=1,
+            relief="solid",
+            highlightbackground=self.border_color,
+            justify="center"
+        )
+        self.ent_otp.pack(padx=28, pady=(0, 6), ipady=5)
+        self.ent_otp.focus()
+        self.ent_otp.bind("<Return>", lambda event: self._attempt_otp_verify())
+
+        self.lbl_otp_err = tk.Label(
+            card_outer,
+            text="",
+            font=("Segoe UI", 8, "bold"),
+            bg=self.card_bg,
+            fg=self.accent_red
+        )
+        self.lbl_otp_err.pack(pady=(0, 6))
+
+        btn_verify = tk.Button(
+            card_outer,
+            text="VERIFY & UNLOCK",
+            font=("Segoe UI", 11, "bold"),
+            bg=self.accent_green,
+            fg="#090C15",
+            activebackground=self.accent_blue_hover,
+            activeforeground="#090C15",
+            bd=0,
+            cursor="hand2",
+            height=2,
+            relief="flat",
+            command=self._attempt_otp_verify
+        )
+        btn_verify.pack(fill="x", padx=28, pady=(0, 10))
+
+        # Recovery & Help Link
+        btn_recover = tk.Button(
+            card_outer,
+            text="Lost Phone or Need Setup Key? Restore 2FA Setup",
+            font=("Segoe UI", 8, "underline"),
+            bg=self.card_bg,
+            fg=self.accent_blue,
+            activebackground=self.card_bg,
+            activeforeground=self.accent_blue_hover,
+            bd=0,
+            cursor="hand2",
+            relief="flat",
+            command=self._show_recovery_modal
+        )
+        btn_recover.pack(pady=(0, 10))
+
+    def _attempt_otp_verify(self):
+        """Validate 6-digit OTP code against the Firebase-synced secret key."""
+        entered = self.ent_otp.get()
+        if not entered:
+            self.lbl_otp_err.config(text="Please enter 6-digit code", fg=self.accent_red)
+            return
+
+        if self.auth_service.verify_otp_code(entered):
+            self.lbl_otp_err.config(text="✓ Access Granted!", fg=self.accent_green)
+            self.root.after(300, self._unlock_and_launch_main_app)
+        else:
+            self.ent_otp.delete(0, tk.END)
+            self.lbl_otp_err.config(text="Invalid OTP code. Please try again.", fg=self.accent_red)
+            self.ent_otp.focus()
+
+    def _show_recovery_modal(self):
+        """Open Authenticator Recovery Dialog to view existing Firebase secret key & QR code."""
+        rec_win = tk.Toplevel(self.root)
+        rec_win.title("Authenticator Recovery - ArrowFlow")
+        rec_win.configure(bg=self.bg_color)
+        rec_win.geometry("460x560")
+        rec_win.resizable(False, False)
+        rec_win.transient(self.root)
+        rec_win.grab_set()
+
+        # Center relative to root
+        rx = self.root.winfo_x() + (self.root.winfo_width() - 460) // 2
+        ry = self.root.winfo_y() + (self.root.winfo_height() - 560) // 2
+        rec_win.geometry(f"460x560+{max(0, rx)}+{max(0, ry)}")
+
+        card = tk.Frame(rec_win, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        card.pack(fill="both", expand=True, padx=20, pady=20)
+
+        lbl_rtitle = tk.Label(card, text="🔑 2FA Authenticator Recovery", font=("Segoe UI", 13, "bold"), bg=self.card_bg, fg=self.fg_color)
+        lbl_rtitle.pack(pady=(12, 2))
+
+        lbl_rsub = tk.Label(card, text="Recover or add your existing secret to a new phone", font=("Segoe UI", 8), bg=self.card_bg, fg=self.sec_fg)
+        lbl_rsub.pack(pady=(0, 10))
+
+        secret = self.auth_service.get_active_secret()
+        if secret:
+            qr_frame = tk.Frame(card, bg="#FFFFFF", padx=6, pady=6, bd=1, relief="solid")
+            qr_frame.pack(pady=(0, 10))
+
+            try:
+                rec_qr_img = TOTPManager.generate_tk_qr_image(secret, target_size=(130, 130))
+                lbl_rqr = tk.Label(qr_frame, image=rec_qr_img, bg="#FFFFFF")
+                lbl_rqr.image = rec_qr_img  # Prevent GC
+                lbl_rqr.pack()
+            except Exception:
+                lbl_rqr = tk.Label(qr_frame, text="QR Unavailable", bg="#FFFFFF", fg="#090C15")
+                lbl_rqr.pack()
+
+            key_box = tk.Frame(card, bg=self.card_sec_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+            key_box.pack(fill="x", padx=16, pady=(0, 12))
+
+            key_inner = tk.Frame(key_box, bg=self.card_sec_bg)
+            key_inner.pack(fill="x", padx=10, pady=6)
+
+            formatted = TOTPManager.format_secret_display(secret)
+            lbl_key = tk.Label(key_inner, text=formatted, font=("Consolas", 11, "bold"), bg=self.card_sec_bg, fg=self.accent_blue)
+            lbl_key.pack(side="left")
+
+            def _copy_rec_key():
+                self.root.clipboard_clear()
+                self.root.clipboard_append(secret)
+                btn_rec_copy.config(text="✓ Copied!", bg=self.accent_green, fg="#090C15")
+                rec_win.after(2000, lambda: btn_rec_copy.config(text="📋 Copy", bg=self.card_bg, fg=self.accent_blue))
+
+            btn_rec_copy = tk.Button(
+                key_inner,
+                text="📋 Copy",
+                font=("Segoe UI", 8, "bold"),
+                bg=self.card_bg,
+                fg=self.accent_blue,
+                bd=0,
+                cursor="hand2",
+                padx=6,
+                pady=1,
+                relief="flat",
+                command=_copy_rec_key
+            )
+            btn_rec_copy.pack(side="right")
+        else:
+            lbl_nokey = tk.Label(card, text="No secret key found in Firebase.", font=("Segoe UI", 9), bg=self.card_bg, fg=self.accent_red)
+            lbl_nokey.pack(pady=20)
+
+        lbl_inst = tk.Label(
+            card,
+            text="1. Open Google / Microsoft Authenticator on your new phone.\n2. Scan the QR code or enter the secret key manually.\n3. Close this window and enter the 6-digit code on the login screen.",
+            font=("Segoe UI", 8),
+            bg=self.card_bg,
+            fg=self.sec_fg,
+            justify="left"
+        )
+        lbl_inst.pack(padx=16, pady=(0, 14), anchor="w")
+
+        btn_close = tk.Button(
+            card,
+            text="CLOSE & RETURN TO LOGIN",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.card_sec_bg,
+            fg=self.fg_color,
+            bd=0,
+            cursor="hand2",
+            height=2,
+            relief="flat",
+            command=rec_win.destroy
+        )
+        btn_close.pack(fill="x", padx=16, pady=(0, 8))
+
+    def _unlock_and_launch_main_app(self):
+        """Unlock application, destroy auth frames, resize window, and build main dashboard."""
+        self.is_authenticated = True
+        self._clean_auth_frames()
+        self._center_window(560, 680)
+        self._build_main_ui()
+
+        if sys.platform == "darwin":
+            trusted, perm_msg = check_macos_permissions()
+            if not trusted and perm_msg:
+                messagebox.showwarning("macOS Permission Required", perm_msg)
+
+        self._start_background_update_check(silent=True)
 
     def _build_main_ui(self):
         """Build main application layout with fixed header, vertical scrollable content, and sticky action bar."""

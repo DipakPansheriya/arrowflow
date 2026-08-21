@@ -52,15 +52,24 @@
         <!-- 2. Authentication -->
         <article id="authentication" class="doc-article glass-card">
           <div class="article-header">
-            <span class="badge-tag badge-cyan">Overview</span>
-            <h2>2. Authentication</h2>
+            <span class="badge-tag badge-cyan">2FA Security</span>
+            <h2>2. Two-Factor Authentication (TOTP)</h2>
           </div>
           <p>
-            ArrowFlow opens to a dark password lock screen upon launch. Access requires entering the configured application password.
+            ArrowFlow features multi-factor authentication powered by Firebase. Upon launch, enter the administrator access password followed by the time-based 6-digit OTP code from Google Authenticator or Microsoft Authenticator.
           </p>
           <div class="alert-box alert-info">
-            <strong>Default Password:</strong> <code>Deep&#64;2026</code> (Hashed securely via SHA-256 in app configuration).
+            <strong>Default Password:</strong> <code>deep&#64;2026</code> (SHA-256 protected).
           </div>
+          <p>
+            <strong>First Launch:</strong> Scan the displayed QR code or enter the 16-character Secret Key in your Authenticator mobile app, then enter the 6-digit confirmation code.
+          </p>
+          <p>
+            <strong>Subsequent Logins:</strong> Enter your password and the current 6-digit OTP code from your Authenticator app.
+          </p>
+          <p>
+            <strong>Firebase Persistence:</strong> The Authenticator secret key is created once and stored securely in Firebase Firestore, allowing seamless recovery if your phone is lost or replaced.
+          </p>
         </article>
 
         <!-- 3. VS Code Selection -->
