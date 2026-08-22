@@ -32,18 +32,23 @@ echo.
 echo Compiling ArrowFlow.exe...
 "!PY_CMD!" -m PyInstaller --noconfirm ArrowFlow.spec
 
-if exist "dist\ArrowFlow.exe" (
+echo.
+echo Compiling ArrowFlowUpdater.exe...
+"!PY_CMD!" -m PyInstaller --noconfirm ArrowFlowUpdater.spec
+
+if exist "dist\ArrowFlow.exe" if exist "dist\ArrowFlowUpdater.exe" (
     echo.
     echo ========================================================
     echo BUILD SUCCESSFUL!
     echo Main App:   dist\ArrowFlow.exe
+    echo Updater:    dist\ArrowFlowUpdater.exe
     echo ========================================================
     goto end
 )
 
 echo.
 echo ========================================================
-echo BUILD FAILED! Check console output above for details.
+echo BUILD FAILED! One or more executables failed to compile.
 echo ========================================================
 
 :end
