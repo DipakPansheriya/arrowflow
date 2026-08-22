@@ -13,6 +13,7 @@ from auth.auth_service import AuthService
 from auth.totp_manager import TOTPManager
 from PIL import Image, ImageTk
 from updater import UpdateClient, UpdateManifest
+from theme_manager import theme_manager
 
 # Compact Spacing Design System Constants for 540x660 Layout
 OUTER_PAD = 18            # Left & Right outer window padding
@@ -38,66 +39,18 @@ class ArrowAutomationGUI:
             except Exception:
                 pass
 
-        # Color Palette - Electric Cyan / Neon Blue ArrowFlow Theme (Matching App Icon Logo)
-        self.bg_color = "#090C15"            # Deep midnight space background
-        self.card_bg = "#121625"             # Dark navy charcoal card container
-        self.card_sec_bg = "#192035"         # Metallic navy panel section
-        self.input_bg = "#0E121E"            # Dark sunken input field background
-        self.border_color = "#242E48"        # Subdued cyan-tinted border
-        self.accent_blue = "#00D2FF"         # Electric Cyan / Neon Blue (ArrowFlow Logo Accent)
-        self.accent_blue_hover = "#33DDFF"   # Bright cyan hover
-        self.accent_green = "#00E5A3"        # Vibrant Electric Teal-Green (Action / Success)
-        self.accent_red = "#FF4D6D"          # Neon Red Glow (Stop / Danger)
-        self.fg_color = "#F0F4FF"            # Primary text (Crisp cool white)
-        self.sec_fg = "#8E9BB5"              # Secondary text
-        self.muted_fg = "#5C6B8A"            # Muted helper text
-        self.progress_bg = "#1C253B"        # Progress bar trough
-        self.disabled_bg = "#192035"         # Disabled control background
-        self.disabled_fg = "#424E68"         # Disabled text
+        # Register Theme Manager Listener & Load Color Palette
+        theme_manager.add_listener(self._on_theme_changed)
+        self._update_color_attributes()
         
         self.root.configure(bg=self.bg_color)
         self._center_window(420, 480)
         self.root.resizable(True, True)
         self.root.minsize(500, 680)
         
-        # Configure TTK Styles
+        # Configure TTK Styles using ThemeManager
         self.style = ttk.Style()
-        self.style.theme_use("clam")
-        
-        # Root & Component Styles
-        self.style.configure(".", background=self.bg_color, foreground=self.fg_color, font=("Segoe UI", 9))
-        
-        # Custom TTK Combobox Styling with constrained dropdown height
-        self.style.configure(
-            "TCombobox",
-            fieldbackground=self.input_bg,
-            background=self.card_sec_bg,
-            foreground=self.fg_color,
-            arrowcolor=self.accent_blue,
-            bordercolor=self.border_color,
-            lightcolor=self.border_color,
-            darkcolor=self.border_color,
-            padding=5
-        )
-        self.style.map("TCombobox", fieldbackground=[("readonly", self.input_bg)], foreground=[("readonly", self.fg_color)])
-        
-        # Fix Combobox dropdown popup window colors & max scrollbar height (6 items max)
-        self.root.option_add("*TCombobox*Listbox.background", self.input_bg)
-        self.root.option_add("*TCombobox*Listbox.foreground", self.fg_color)
-        self.root.option_add("*TCombobox*Listbox.selectBackground", self.accent_blue)
-        self.root.option_add("*TCombobox*Listbox.selectForeground", "#090C15")
-        self.root.option_add("*TCombobox*Listbox.font", ("Segoe UI", 9))
-        
-        # Custom Progressbar Style - Electric Cyan Glow
-        self.style.configure(
-            "Custom.Horizontal.TProgressbar",
-            troughcolor=self.progress_bg,
-            background=self.accent_blue,
-            thickness=14,
-            bordercolor=self.card_bg,
-            lightcolor=self.accent_blue,
-            darkcolor=self.accent_blue
-        )
+        theme_manager.apply_ttk_styles(self.style, self.root)
         
         # Windows Map: {display_title: hwnd}
         self.windows_map = {}
@@ -148,6 +101,200 @@ class ArrowAutomationGUI:
         x = max(0, (screen_width - width) // 2)
         y = max(0, (screen_height - height) // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _update_color_attributes(self):
+        """Fetch color palette for active theme from ThemeManager."""
+        colors = theme_manager.get_colors()
+        self.bg_color = colors["bg_color"]
+        self.card_bg = colors["card_bg"]
+        self.card_sec_bg = colors["card_sec_bg"]
+        self.input_bg = colors["input_bg"]
+        self.border_color = colors["border_color"]
+        self.accent_blue = colors["accent_blue"]
+        self.accent_blue_hover = colors["accent_blue_hover"]
+        self.accent_green = colors["accent_green"]
+        self.accent_red = colors["accent_red"]
+        self.fg_color = colors["fg_color"]
+        self.sec_fg = colors["sec_fg"]
+        self.muted_fg = colors["muted_fg"]
+        self.progress_bg = colors["progress_bg"]
+        self.disabled_bg = colors["disabled_bg"]
+        self.disabled_fg = colors["disabled_fg"]
+        self.btn_text = colors["btn_text"]
+
+    def _on_theme_changed(self, theme_name: str):
+        """Callback invoked when ThemeManager theme updates."""
+        self._update_color_attributes()
+        theme_manager.apply_ttk_styles(self.style, self.root)
+        self.root.configure(bg=self.bg_color)
+        
+        # Apply theme colors recursively to all existing Tkinter widgets
+        self._apply_theme_to_widget_tree(self.root)
+        
+        # Update dynamic stateful control styling
+        self._refresh_stateful_widget_colors()
+
+    def _refresh_stateful_widget_colors(self):
+        """Re-evaluate colors for dynamic buttons, status badges, and toggles."""
+        # Action button (START / STOP)
+        if hasattr(self, "btn_action") and self.btn_action.winfo_exists():
+            if hasattr(self, "controller") and self.controller.is_running:
+                self.btn_action.config(
+                    bg=self.accent_red,
+                    fg=self.btn_text,
+                    activebackground="#FF7A93",
+                    activeforeground=self.btn_text
+                )
+            else:
+                self.btn_action.config(
+                    bg=self.accent_green,
+                    fg=self.btn_text,
+                    activebackground=self.accent_blue_hover,
+                    activeforeground=self.btn_text
+                )
+
+        # File switch toggle button
+        if hasattr(self, "btn_file_toggle") and self.btn_file_toggle.winfo_exists():
+            if self.file_switch_enabled:
+                self.btn_file_toggle.config(
+                    bg=self.accent_green,
+                    fg=self.btn_text,
+                    activebackground=self.accent_blue_hover,
+                    activeforeground=self.btn_text
+                )
+            else:
+                self.btn_file_toggle.config(
+                    bg=self.card_sec_bg,
+                    fg=self.sec_fg,
+                    activebackground=self.card_sec_bg,
+                    activeforeground=self.fg_color
+                )
+
+        # Chrome mode toggle button
+        if hasattr(self, "btn_chrome_toggle") and self.btn_chrome_toggle.winfo_exists():
+            if self.chrome_enabled:
+                self.btn_chrome_toggle.config(
+                    bg=self.accent_green,
+                    fg=self.btn_text,
+                    activebackground=self.accent_blue_hover,
+                    activeforeground=self.btn_text
+                )
+            else:
+                self.btn_chrome_toggle.config(
+                    bg=self.card_sec_bg,
+                    fg=self.sec_fg,
+                    activebackground=self.card_sec_bg,
+                    activeforeground=self.fg_color
+                )
+
+        # Header Status Badge
+        if hasattr(self, "lbl_header_status") and self.lbl_header_status.winfo_exists():
+            if hasattr(self, "controller") and self.controller.is_running:
+                self.lbl_header_status.config(bg=self.card_sec_bg, fg=self.accent_green)
+            else:
+                self.lbl_header_status.config(bg=self.card_sec_bg, fg=self.sec_fg)
+
+        # Theme Selector Segmented Control Buttons
+        if hasattr(self, "btn_theme_dark") and self.btn_theme_dark.winfo_exists():
+            if theme_manager.current_theme == "dark":
+                self.btn_theme_dark.config(
+                    text="● Dark Mode",
+                    bg=self.accent_blue,
+                    fg=self.btn_text,
+                    activebackground=self.accent_blue_hover,
+                    activeforeground=self.btn_text
+                )
+                self.btn_theme_light.config(
+                    text="○ Light Mode",
+                    bg=self.card_sec_bg,
+                    fg=self.sec_fg,
+                    activebackground=self.card_bg,
+                    activeforeground=self.fg_color
+                )
+            else:
+                self.btn_theme_dark.config(
+                    text="○ Dark Mode",
+                    bg=self.card_sec_bg,
+                    fg=self.sec_fg,
+                    activebackground=self.card_bg,
+                    activeforeground=self.fg_color
+                )
+                self.btn_theme_light.config(
+                    text="● Light Mode",
+                    bg=self.accent_blue,
+                    fg=self.btn_text,
+                    activebackground=self.accent_blue_hover,
+                    activeforeground=self.btn_text
+                )
+
+        # Canvas background
+        if hasattr(self, "canvas") and self.canvas.winfo_exists():
+            self.canvas.config(bg=self.bg_color)
+
+    def _apply_theme_to_widget_tree(self, widget=None):
+        """Recursively update widget colors based on assigned _theme_role tags."""
+        if widget is None:
+            widget = self.root
+
+        if isinstance(widget, (tk.Tk, tk.Toplevel)):
+            try:
+                widget.configure(bg=self.bg_color)
+            except Exception:
+                pass
+
+        role = getattr(widget, "_theme_role", None)
+        if role:
+            try:
+                if role == "window_bg":
+                    widget.config(bg=self.bg_color)
+                elif role == "card_bg":
+                    kwargs = {"bg": self.card_bg}
+                    if "highlightbackground" in widget.keys():
+                        kwargs["highlightbackground"] = self.border_color
+                    widget.config(**kwargs)
+                elif role == "card_sec_bg":
+                    kwargs = {"bg": self.card_sec_bg}
+                    if "highlightbackground" in widget.keys():
+                        kwargs["highlightbackground"] = self.border_color
+                    widget.config(**kwargs)
+                elif role == "input_bg":
+                    st = widget.cget("state") if "state" in widget.keys() else "normal"
+                    kwargs = {
+                        "bg": self.input_bg,
+                        "fg": self.disabled_fg if st == "disabled" else self.fg_color,
+                        "insertbackground": self.accent_blue
+                    }
+                    if "highlightbackground" in widget.keys():
+                        kwargs["highlightbackground"] = self.border_color
+                    widget.config(**kwargs)
+                elif role == "fg_text":
+                    widget.config(fg=self.fg_color)
+                elif role == "sec_text":
+                    widget.config(fg=self.sec_fg)
+                elif role == "muted_text":
+                    widget.config(fg=self.muted_fg)
+                elif role == "accent_blue_text":
+                    widget.config(fg=self.accent_blue)
+                elif role == "sec_btn":
+                    widget.config(bg=self.card_sec_bg, fg=self.sec_fg, activebackground=self.card_bg, activeforeground=self.fg_color)
+                elif role == "blue_btn":
+                    widget.config(bg=self.card_sec_bg, fg=self.accent_blue, activebackground=self.accent_blue, activeforeground=self.btn_text)
+                elif role == "green_btn":
+                    widget.config(bg=self.accent_green, fg=self.btn_text, activebackground=self.accent_blue_hover, activeforeground=self.btn_text)
+            except Exception:
+                pass
+        elif isinstance(widget, tk.Label):
+            try:
+                parent_bg = widget.master.cget("bg")
+                widget.config(bg=parent_bg)
+            except Exception:
+                pass
+
+        try:
+            for child in widget.winfo_children():
+                self._apply_theme_to_widget_tree(child)
+        except Exception:
+            pass
 
     def _clean_auth_frames(self):
         """Destroy any active authentication frames."""
@@ -1206,6 +1353,80 @@ class ArrowAutomationGUI:
 
         self.lbl_chrome_status = tk.Label(status_inner, text="● Chrome Mode: OFF", font=("Segoe UI", 8, "bold"), bg=self.card_sec_bg, fg=self.sec_fg)
         self.lbl_chrome_status.pack(anchor="w")
+
+        # CARD 8: APPEARANCE & THEME Card
+        theme_card = tk.Frame(self.scrollable_frame, bg=self.card_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        theme_card._theme_role = "card_bg"
+        theme_card.pack(fill="x", pady=(0, CARD_GAP))
+
+        theme_hdr = tk.Frame(theme_card, bg=self.card_bg)
+        theme_hdr._theme_role = "card_bg"
+        theme_hdr.pack(fill="x", padx=CARD_PAD_X, pady=(CARD_PAD_Y, CONTROL_GAP))
+
+        lbl_theme_title = tk.Label(theme_hdr, text="APPEARANCE & THEME", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.sec_fg)
+        lbl_theme_title._theme_role = "sec_text"
+        lbl_theme_title.pack(anchor="w")
+
+        lbl_theme_sub = tk.Label(theme_hdr, text="Select application interface theme preference", font=("Segoe UI", 8), bg=self.card_bg, fg=self.muted_fg)
+        lbl_theme_sub._theme_role = "muted_text"
+        lbl_theme_sub.pack(anchor="w")
+
+        theme_box = tk.Frame(theme_card, bg=self.card_sec_bg, bd=1, relief="solid", highlightbackground=self.border_color)
+        theme_box._theme_role = "card_sec_bg"
+        theme_box.pack(fill="x", padx=CARD_PAD_X, pady=(0, CONTROL_GAP))
+
+        theme_inner = tk.Frame(theme_box, bg=self.card_sec_bg)
+        theme_inner._theme_role = "card_sec_bg"
+        theme_inner.pack(fill="x", padx=12, pady=10)
+
+        # Segmented Control Buttons
+        curr_theme = theme_manager.current_theme
+
+        dark_active = (curr_theme == "dark")
+        self.btn_theme_dark = tk.Button(
+            theme_inner,
+            text="● Dark Mode" if dark_active else "○ Dark Mode",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.accent_blue if dark_active else self.card_sec_bg,
+            fg=self.btn_text if dark_active else self.sec_fg,
+            activebackground=self.accent_blue_hover if dark_active else self.card_bg,
+            activeforeground=self.btn_text if dark_active else self.fg_color,
+            bd=0,
+            cursor="hand2",
+            padx=16,
+            pady=6,
+            relief="flat",
+            command=lambda: theme_manager.set_theme("dark")
+        )
+        self.btn_theme_dark.pack(side="left", expand=True, fill="x", padx=(0, 6))
+
+        light_active = (curr_theme == "light")
+        self.btn_theme_light = tk.Button(
+            theme_inner,
+            text="● Light Mode" if light_active else "○ Light Mode",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.accent_blue if light_active else self.card_sec_bg,
+            fg=self.btn_text if light_active else self.sec_fg,
+            activebackground=self.accent_blue_hover if light_active else self.card_bg,
+            activeforeground=self.btn_text if light_active else self.fg_color,
+            bd=0,
+            cursor="hand2",
+            padx=16,
+            pady=6,
+            relief="flat",
+            command=lambda: theme_manager.set_theme("light")
+        )
+        self.btn_theme_light.pack(side="left", expand=True, fill="x", padx=(6, 0))
+
+        lbl_theme_hint = tk.Label(
+            theme_card,
+            text="Theme updates immediately across all windows and persists automatically.",
+            font=("Segoe UI", 8),
+            bg=self.card_bg,
+            fg=self.muted_fg
+        )
+        lbl_theme_hint._theme_role = "muted_text"
+        lbl_theme_hint.pack(anchor="w", padx=CARD_PAD_X, pady=(0, CARD_PAD_Y))
 
         # Populate windows list
         self._refresh_window_list()

@@ -9,7 +9,7 @@ A concise quick-start and technical documentation guide for building, running, a
 **ArrowFlow** is a cross-platform desktop automation utility written in Python (Tkinter) and compiled into a standalone Windows executable (`ArrowFlow.exe`).
 
 - **Version**: `1.0.0`
-- **Default Credentials**: Administrator Password: `deep@2026`
+- **Default Credentials**: Administrator Password: ``
 - **Primary Tech Stack**: Python 3.11+, Tkinter, Firebase Firestore, PyInstaller, `pyotp`, `qrcode`, `Pillow`, `pynput`, `pywin32`
 
 ---

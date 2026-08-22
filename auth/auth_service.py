@@ -13,10 +13,10 @@ from auth.firebase_client import FirebaseClient
 from auth.totp_manager import TOTPManager
 
 class AuthService:
-    # SHA-256 Hash for Admin Password: "deep@2026"
+    # SHA-256 Hash for Admin Password:
     ALLOWED_PASSWORD_HASHES = {
-        "be261ef578ec540a9ce3f82c8427e75d155a34d7d49171d9d79834d5269001a3",  # deep@2026
-        "16d7b5441cd65b3092ed27778f745f923689228012408b8af981f44de1958dec",  # Deep@2026
+        "be261ef578ec540a9ce3f82c8427e75d155a34d7d49171d9d79834d5269001a3", 
+        "16d7b5441cd65b3092ed27778f745f923689228012408b8af981f44de1958dec", 
     }
 
     def __init__(self, firebase_client: Optional[FirebaseClient] = None):
