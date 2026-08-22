@@ -64,29 +64,42 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ needs.version.outputs.new_tag }}"
+          if (-not $tag) { $tag = "v1.0.14" }
           $cleanVersion = $tag.TrimStart('v')
           Write-Host "Setting CURRENT_VERSION in version.py to: $cleanVersion"
-          (Get-Content version.py) -replace 'CURRENT_VERSION\s*=\s*".*?"', "CURRENT_VERSION = `"$cleanVersion`"" | Set-Content version.py
+          $raw = Get-Content version.py -Raw
+          $updated = $raw -replace 'CURRENT_VERSION = ".*?"', "CURRENT_VERSION = ""$cleanVersion"""
+          [System.IO.File]::WriteAllText("$PWD/version.py", $updated)
 
       - name: Build Windows Executables
+        shell: pwsh
         run: |
+          Write-Host "Building ArrowFlow.exe..."
           python -m PyInstaller --noconfirm ArrowFlow.spec
+          if (-not (Test-Path "dist/ArrowFlow.exe")) {
+            throw "Build failed: dist/ArrowFlow.exe was not created!"
+          }
+          
+          Write-Host "Building ArrowFlowUpdater.exe..."
           python -m PyInstaller --noconfirm ArrowFlowUpdater.spec
+          if (-not (Test-Path "dist/ArrowFlowUpdater.exe")) {
+            throw "Build failed: dist/ArrowFlowUpdater.exe was not created!"
+          }
 
       - name: Verify Windows Executables & Generate Manifest
         shell: pwsh
         run: |
-          if (-Not (Test-Path "dist/ArrowFlow.exe")) {
-            Write-Error "ERROR: dist/ArrowFlow.exe was not produced!"
-            exit 1
+          if (-not (Test-Path "dist/ArrowFlow.exe")) {
+            throw "dist/ArrowFlow.exe missing before manifest generation!"
           }
-          if (-Not (Test-Path "dist/ArrowFlowUpdater.exe")) {
-            Write-Error "ERROR: dist/ArrowFlowUpdater.exe was not produced!"
-            exit 1
+          if (-not (Test-Path "dist/ArrowFlowUpdater.exe")) {
+            throw "dist/ArrowFlowUpdater.exe missing before manifest generation!"
           }
-          
+
           $tag = "${{ needs.version.outputs.new_tag }}"
+          if (-not $tag) { $tag = "v1.0.14" }
           $cleanVersion = $tag.TrimStart('v')
+
           $hashApp = (Get-FileHash -Algorithm SHA256 "dist/ArrowFlow.exe").Hash.ToLower()
           $hashUpdater = (Get-FileHash -Algorithm SHA256 "dist/ArrowFlowUpdater.exe").Hash.ToLower()
 
@@ -102,7 +115,7 @@ jobs:
             mandatory = $false
           } | ConvertTo-Json -Depth 4
 
-          Set-Content -Path "dist/latest.json" -Value $manifest
+          [System.IO.File]::WriteAllText("$PWD/dist/latest.json", $manifest)
           Write-Host "Generated dist/latest.json successfully:"
           Write-Host $manifest
 
