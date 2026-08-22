@@ -203,10 +203,13 @@ def download_file_with_progress(download_url: str, dest_path: str, progress_call
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    with urllib.request.urlopen(req, timeout=15, context=ctx) as response:
+    with urllib.request.urlopen(req, timeout=20, context=ctx) as response:
         total_size = int(response.headers.get("Content-Length", 0))
         downloaded = 0
-        chunk_size = 32768
+        chunk_size = 65536
+        
+        if progress_callback:
+            progress_callback(0, total_size)
         
         with open(dest_path, "wb") as out_file:
             while True:
@@ -220,3 +223,4 @@ def download_file_with_progress(download_url: str, dest_path: str, progress_call
                 if progress_callback:
                     progress_callback(downloaded, total_size)
     return True
+
