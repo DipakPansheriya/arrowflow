@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo Building ArrowFlow.exe and ArrowFlowUpdater.exe
+echo Building ArrowFlow.exe
 echo ========================================================
 
 set "PY_CMD="
@@ -32,16 +32,11 @@ echo.
 echo Compiling ArrowFlow.exe...
 "!PY_CMD!" -m PyInstaller --noconfirm ArrowFlow.spec
 
-echo.
-echo Compiling ArrowFlowUpdater.exe...
-"!PY_CMD!" -m PyInstaller --noconfirm ArrowFlowUpdater.spec
-
-if exist "dist\ArrowFlow.exe" if exist "dist\ArrowFlowUpdater.exe" (
+if exist "dist\ArrowFlow.exe" (
     echo.
     echo ========================================================
     echo BUILD SUCCESSFUL!
     echo Main App:   dist\ArrowFlow.exe
-    echo Updater:    dist\ArrowFlowUpdater.exe
     echo ========================================================
     goto end
 )
@@ -53,3 +48,4 @@ echo ========================================================
 
 :end
 pause
+
