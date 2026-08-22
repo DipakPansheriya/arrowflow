@@ -13,7 +13,11 @@ hiddenimports = [
     'PIL',
     'PIL.ImageTk',
     'PIL.Image',
-    'requests'
+    'requests',
+    'updater',
+    'updater.client',
+    'updater.manifest',
+    'updater.verifier'
 ]
 tmp_ret = collect_all('pynput')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]

@@ -2,6 +2,7 @@ import os
 import sys
 import hashlib
 import threading
+from typing import Optional
 import tkinter as tk
 from tkinter import ttk, messagebox
 from automation_engine import ArrowAutomationController
@@ -11,6 +12,7 @@ from version import CURRENT_VERSION
 from auth.auth_service import AuthService
 from auth.totp_manager import TOTPManager
 from PIL import Image, ImageTk
+from updater import UpdateClient, UpdateManifest
 
 # Compact Spacing Design System Constants for 540x660 Layout
 OUTER_PAD = 18            # Left & Right outer window padding
@@ -123,6 +125,12 @@ class ArrowAutomationGUI:
         self.is_window_hidden = False
         self.last_esc_time = 0.0
         self.last_alt_space_time = 0.0
+
+        # Initialize Update System attributes
+        self.update_client = UpdateClient()
+        self.update_banner_frame = None
+        self.staged_update_exe = None
+        self.latest_update_manifest = None
         
         # 2FA Authentication Service & Image References
         self.auth_service = AuthService()
@@ -603,6 +611,9 @@ class ArrowAutomationGUI:
             if not trusted and perm_msg:
                 messagebox.showwarning("macOS Permission Required", perm_msg)
 
+        # Trigger background check for updates post-authentication
+        self.root.after(1500, self._start_background_update_check)
+
     def _build_main_ui(self):
         """Build main application layout with fixed header, vertical scrollable content, and sticky action bar."""
         main_container = tk.Frame(self.root, bg=self.bg_color)
@@ -635,6 +646,21 @@ class ArrowAutomationGUI:
             pady=3
         )
         self.lbl_header_status.pack(side="top", anchor="e")
+
+        self.btn_check_update = tk.Button(
+            hdr_right,
+            text="🔄 Check Update",
+            font=("Segoe UI", 8),
+            bg=self.card_sec_bg,
+            fg=self.sec_fg,
+            activebackground=self.card_bg,
+            activeforeground=self.fg_color,
+            bd=1,
+            relief="solid",
+            cursor="hand2",
+            command=lambda: self._start_background_update_check(show_no_update_dialog=True)
+        )
+        self.btn_check_update.pack(side="top", anchor="e", pady=(4, 0))
 
         # 2. STICKY ACTION BAR & ESC HINT (Fixed at Bottom)
         action_frame = tk.Frame(main_container, bg=self.bg_color)
@@ -1627,6 +1653,180 @@ class ArrowAutomationGUI:
     # =========================================================================
     # AUTOMATIC UPDATE SYSTEM UI & HANDLERS
     # =========================================================================
+
+    def _start_background_update_check(self, show_no_update_dialog=False):
+        """Initiates an asynchronous background check for application updates."""
+        if hasattr(self, 'btn_check_update'):
+            self.btn_check_update.config(state="disabled", text="Checking...")
+
+        def on_result(is_avail, manifest, err_msg):
+            self.root.after(0, lambda: self._on_update_check_finished(is_avail, manifest, err_msg, show_no_update_dialog))
+
+        self.update_client.check_for_updates_async(on_result)
+
+    def _on_update_check_finished(self, is_avail: bool, manifest: Optional[UpdateManifest], err_msg: Optional[str], show_dialog: bool):
+        """Callback executed on main UI thread when update check completes."""
+        if hasattr(self, 'btn_check_update'):
+            self.btn_check_update.config(state="normal", text="🔄 Check Update")
+
+        if is_avail and manifest:
+            self._show_update_banner(manifest)
+        elif err_msg:
+            if show_dialog:
+                messagebox.showerror("Update Check Failed", f"Unable to check for updates:\n{err_msg}")
+        else:
+            if show_dialog:
+                messagebox.showinfo("Up to Date", f"ArrowFlow v{CURRENT_VERSION} is currently up to date.")
+
+    def _show_update_banner(self, manifest: UpdateManifest):
+        """Displays a prominent dark-themed update available banner in the main window."""
+        if self.update_banner_frame and self.update_banner_frame.winfo_exists():
+            return  # Banner already visible
+
+        # Banner container at top of window
+        banner = tk.Frame(self.root, bg="#1E293B", bd=1, relief="solid")
+        banner.pack(fill="x", side="top", before=self.root.winfo_children()[0], padx=10, pady=5)
+        self.update_banner_frame = banner
+
+        inner = tk.Frame(banner, bg="#1E293B", padx=12, pady=8)
+        inner.pack(fill="x")
+
+        lbl_info = tk.Label(
+            inner,
+            text=f"🚀 ArrowFlow v{manifest.version} Available!",
+            font=("Segoe UI", 10, "bold"),
+            bg="#1E293B",
+            fg="#38BDF8"
+        )
+        lbl_info.pack(side="left")
+
+        btn_update = tk.Button(
+            inner,
+            text="Download & Install",
+            font=("Segoe UI", 9, "bold"),
+            bg="#0284C7",
+            fg="#FFFFFF",
+            activebackground="#0369A1",
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=lambda: self._start_update_download(manifest)
+        )
+        btn_update.pack(side="right", padx=(10, 0))
+
+        btn_dismiss = tk.Button(
+            inner,
+            text="✕",
+            font=("Segoe UI", 9),
+            bg="#1E293B",
+            fg="#94A3B8",
+            bd=0,
+            cursor="hand2",
+            command=banner.destroy
+        )
+        btn_dismiss.pack(side="right")
+
+    def _start_update_download(self, manifest: UpdateManifest):
+        """Downloads the updated binary to staging directory with a progress modal."""
+        dl_win = tk.Toplevel(self.root)
+        dl_win.title("Downloading ArrowFlow Update")
+        dl_win.geometry("400x180")
+        dl_win.configure(bg=self.bg_color)
+        dl_win.transient(self.root)
+        dl_win.grab_set()
+
+        # Center dialog
+        dl_win.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 200
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 90
+        dl_win.geometry(f"400x180+{x}+{y}")
+
+        lbl_title = tk.Label(
+            dl_win,
+            text=f"Downloading ArrowFlow v{manifest.version}...",
+            font=("Segoe UI", 11, "bold"),
+            bg=self.bg_color,
+            fg=self.fg_color
+        )
+        lbl_title.pack(anchor="w", padx=20, pady=(20, 5))
+
+        lbl_status = tk.Label(
+            dl_win,
+            text="Connecting to release server...",
+            font=("Segoe UI", 9),
+            bg=self.bg_color,
+            fg=self.sec_fg
+        )
+        lbl_status.pack(anchor="w", padx=20, pady=(0, 10))
+
+        progress_var = tk.DoubleVar(value=0)
+        progress_bar = ttk.Progressbar(dl_win, variable=progress_var, maximum=100)
+        progress_bar.pack(fill="x", padx=20, pady=(0, 15))
+
+        cancel_event = threading.Event()
+
+        def on_cancel():
+            cancel_event.set()
+            dl_win.destroy()
+
+        btn_cancel = tk.Button(
+            dl_win,
+            text="Cancel",
+            font=("Segoe UI", 9),
+            bg=self.card_sec_bg,
+            fg=self.sec_fg,
+            command=on_cancel
+        )
+        btn_cancel.pack(anchor="e", padx=20)
+
+        def download_worker():
+            def progress_cb(downloaded, total):
+                if total > 0:
+                    pct = (downloaded / total) * 100
+                    def update_ui():
+                        if dl_win.winfo_exists():
+                            progress_var.set(pct)
+                            mb = downloaded / (1024 * 1024)
+                            total_mb = total / (1024 * 1024)
+                            lbl_status.config(text=f"Downloaded {mb:.1f} MB / {total_mb:.1f} MB ({pct:.0f}%)")
+                    self.root.after(0, update_ui)
+
+            try:
+                staged_path = self.update_client.download_update(manifest, progress_cb, cancel_event)
+                def on_success():
+                    if dl_win.winfo_exists():
+                        dl_win.destroy()
+                    self._prompt_and_launch_restart(staged_path, manifest.version)
+                self.root.after(0, on_success)
+            except Exception as e:
+                err = str(e)
+                def on_error():
+                    if dl_win.winfo_exists():
+                        dl_win.destroy()
+                    messagebox.showerror("Update Download Failed", f"Failed to download update:\n{err}")
+                self.root.after(0, on_error)
+
+        t = threading.Thread(target=download_worker, daemon=True)
+        t.start()
+
+    def _prompt_and_launch_restart(self, staged_exe_path: str, version: str):
+        """Asks user to confirm application restart to install update."""
+        res = messagebox.askyesno(
+            "Update Ready to Install",
+            f"ArrowFlow v{version} has been downloaded and verified!\n\n"
+            "Would you like to restart ArrowFlow now to apply the update?",
+            icon="question"
+        )
+        if res:
+            target_exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath("main.py")
+            launched = self.update_client.launch_updater_and_exit(target_exe, staged_exe_path, version)
+            if not launched:
+                messagebox.showerror(
+                    "Updater Binary Missing",
+                    "ArrowFlowUpdater.exe could not be found. Please ensure ArrowFlowUpdater.exe is in the application folder."
+                )
 
     def on_closing(self):
         self.esc_listener.stop()

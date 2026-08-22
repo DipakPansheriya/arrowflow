@@ -60,25 +60,60 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Build Windows Executable
+      - name: Inject Version Tag into version.py
+        shell: pwsh
+        run: |
+          $tag = "${{ needs.version.outputs.new_tag }}"
+          $cleanVersion = $tag.TrimStart('v')
+          Write-Host "Setting CURRENT_VERSION in version.py to: $cleanVersion"
+          (Get-Content version.py) -replace 'CURRENT_VERSION\s*=\s*".*?"', "CURRENT_VERSION = `"$cleanVersion`"" | Set-Content version.py
+
+      - name: Build Windows Executables
         run: |
           python -m PyInstaller --noconfirm ArrowFlow.spec
+          python -m PyInstaller --noconfirm ArrowFlowUpdater.spec
 
-
-      - name: Verify ArrowFlow.exe exists
+      - name: Verify Windows Executables & Generate Manifest
         shell: pwsh
         run: |
           if (-Not (Test-Path "dist/ArrowFlow.exe")) {
-            Write-Error "ERROR: dist/ArrowFlow.exe was not produced by the build!"
+            Write-Error "ERROR: dist/ArrowFlow.exe was not produced!"
             exit 1
           }
-          Write-Host "ArrowFlow.exe verified OK."
+          if (-Not (Test-Path "dist/ArrowFlowUpdater.exe")) {
+            Write-Error "ERROR: dist/ArrowFlowUpdater.exe was not produced!"
+            exit 1
+          }
+          
+          $tag = "${{ needs.version.outputs.new_tag }}"
+          $cleanVersion = $tag.TrimStart('v')
+          $hashApp = (Get-FileHash -Algorithm SHA256 "dist/ArrowFlow.exe").Hash.ToLower()
+          $hashUpdater = (Get-FileHash -Algorithm SHA256 "dist/ArrowFlowUpdater.exe").Hash.ToLower()
 
-      - name: Upload Windows Asset
+          $manifest = @{
+            version = $cleanVersion
+            release_date = (Get-Date -Format "yyyy-MM-dd")
+            url = "https://github.com/DipakPansheriya/arrowflow/releases/download/$tag/ArrowFlow.exe"
+            sha256 = $hashApp
+            updater_url = "https://github.com/DipakPansheriya/arrowflow/releases/download/$tag/ArrowFlowUpdater.exe"
+            updater_sha256 = $hashUpdater
+            changelog = "Automated release $tag with auto-update support."
+            min_supported_version = "1.0.0"
+            mandatory = $false
+          } | ConvertTo-Json -Depth 4
+
+          Set-Content -Path "dist/latest.json" -Value $manifest
+          Write-Host "Generated dist/latest.json successfully:"
+          Write-Host $manifest
+
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-asset
-          path: dist/ArrowFlow.exe
+          path: |
+            dist/ArrowFlow.exe
+            dist/ArrowFlowUpdater.exe
+            dist/latest.json
 
   # ── Step 2: Build macOS ───────────────────────────────────────────────────
   build-macos:
@@ -151,6 +186,8 @@ jobs:
           prerelease: false
           files: |
             assets/ArrowFlow.exe
+            assets/ArrowFlowUpdater.exe
+            assets/latest.json
             assets/ArrowFlow.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
