@@ -257,5 +257,3 @@ def download_file_with_progress(download_url: str, dest_path: str, progress_call
                 if progress_callback:
                     progress_callback(downloaded, total_size)
     return True
-
-
