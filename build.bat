@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo Building ArrowFlow.exe
+echo Building ArrowFlow.exe & ArrowFlowUpdater.exe
 echo ========================================================
 
 set "PY_CMD="
@@ -29,12 +29,8 @@ echo Installing requirements...
 "!PY_CMD!" -m pip install -r requirements.txt
 
 echo.
-echo Compiling ArrowFlow.exe...
+echo Compiling ArrowFlow Executables (ArrowFlow.exe + ArrowFlowUpdater.exe)...
 "!PY_CMD!" -m PyInstaller --noconfirm ArrowFlow.spec
-
-echo.
-echo Compiling ArrowFlowUpdater.exe...
-"!PY_CMD!" -m PyInstaller --noconfirm ArrowFlowUpdater.spec
 
 if exist "dist\ArrowFlow.exe" if exist "dist\ArrowFlowUpdater.exe" (
     echo.
@@ -48,9 +44,8 @@ if exist "dist\ArrowFlow.exe" if exist "dist\ArrowFlowUpdater.exe" (
 
 echo.
 echo ========================================================
-echo BUILD FAILED! One or more executables failed to compile.
+echo BUILD FAILED! Executables were not produced in dist\
 echo ========================================================
 
 :end
 pause
-

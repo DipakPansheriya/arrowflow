@@ -74,14 +74,12 @@ jobs:
       - name: Build Windows Executables
         shell: pwsh
         run: |
-          Write-Host "Building ArrowFlow.exe..."
+          Write-Host "Building ArrowFlow.exe & ArrowFlowUpdater.exe..."
           python -m PyInstaller --noconfirm ArrowFlow.spec
+          
           if (-not (Test-Path "dist/ArrowFlow.exe")) {
             throw "Build failed: dist/ArrowFlow.exe was not created!"
           }
-          
-          Write-Host "Building ArrowFlowUpdater.exe..."
-          python -m PyInstaller --noconfirm ArrowFlowUpdater.spec
           if (-not (Test-Path "dist/ArrowFlowUpdater.exe")) {
             throw "Build failed: dist/ArrowFlowUpdater.exe was not created!"
           }
