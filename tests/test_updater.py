@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from version import CURRENT_VERSION, parse_version, is_newer_version
-from update_checker import fetch_update_manifest, calculate_sha256, download_file_with_progress
+from update_checker import fetch_update_manifest, normalize_manifest, calculate_sha256, download_file_with_progress
 
 class TestArrowFlowUpdater(unittest.TestCase):
     """Automated Unit Tests for ArrowFlow Semantic Versioning, Manifest Checker & Downloader."""
@@ -49,6 +49,29 @@ class TestArrowFlowUpdater(unittest.TestCase):
         parsed = fetch_update_manifest(manifest_path)
         self.assertEqual(parsed["version"], "1.1.0")
         self.assertEqual(parsed["sha256"], "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+
+    def test_github_release_normalization(self):
+        """Verify normalizing GitHub Releases API JSON payload."""
+        github_payload = {
+            "tag_name": "v1.0.8",
+            "body": "Fixed update check and added OTP warnings.",
+            "assets": [
+                {
+                    "name": "ArrowFlow.dmg",
+                    "browser_download_url": "https://github.com/DipakPansheriya/arrowflow/releases/download/v1.0.8/ArrowFlow.dmg",
+                    "digest": "sha256:35128c368876de1136113a4832e7b3a7d1dab5f9851ab3ea31674e1121d26488"
+                },
+                {
+                    "name": "ArrowFlow.exe",
+                    "browser_download_url": "https://github.com/DipakPansheriya/arrowflow/releases/download/v1.0.8/ArrowFlow.exe",
+                    "digest": "sha256:d93d5adfcc3c0dc17c93e6082ffe2e9cdbd0177dc645e5c28a3bf76c4b1ab028"
+                }
+            ]
+        }
+        normalized = normalize_manifest(github_payload)
+        self.assertEqual(normalized["version"], "1.0.8")
+        self.assertIn("ArrowFlow", normalized["download_url"])
+        self.assertEqual(normalized["release_notes"], "Fixed update check and added OTP warnings.")
 
     def test_sha256_calculation_and_verification(self):
         """Verify SHA-256 hash calculation for downloaded files."""

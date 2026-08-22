@@ -6,39 +6,124 @@ import urllib.error
 import ssl
 import os
 import sys
-from version import CURRENT_VERSION, get_update_manifest_url, is_newer_version
+from version import CURRENT_VERSION, GITHUB_RELEASES_API_URL, get_update_manifest_url, is_newer_version
 
-def fetch_update_manifest(manifest_url: str = None, timeout: int = 6) -> dict:
+def _fetch_url_json(url: str, timeout: int = 8) -> dict:
     """
-    Fetch and parse the JSON update manifest over HTTPS or local file path.
-    Returns parsed dictionary or raises an exception on failure.
+    Fetch and decode JSON from an HTTP/HTTPS endpoint.
+    Raises ValueError if response is HTML or malformed.
     """
-    url = manifest_url or get_update_manifest_url()
-    
-    # Handle local file path or file:// URL for testing & local release channels
-    if os.path.exists(url) or url.startswith("file://"):
-        local_path = url.replace("file:///", "").replace("file://", "")
-        with open(local_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-
     os_name = "macOS" if sys.platform == "darwin" else "Windows"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": f"ArrowFlow/{CURRENT_VERSION} ({os_name} UpdateChecker)"}
+        headers={
+            "User-Agent": f"ArrowFlow/{CURRENT_VERSION} ({os_name} UpdateChecker)",
+            "Accept": "application/json, text/plain, */*"
+        }
     )
     
-    # Create unverified context fallback if local SSL certificates are missing/outdated
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    
+
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
-        if response.status == 200:
-            content = response.read().decode("utf-8")
-            data = json.loads(content)
-            return data
-        else:
+        if response.status != 200:
             raise RuntimeError(f"HTTP error status: {response.status}")
+        
+        raw_bytes = response.read()
+        content = raw_bytes.decode("utf-8", errors="replace").strip()
+        
+        # Check if the server returned an HTML fallback page (e.g. Firebase SPA rewrite)
+        if content.lower().startswith("<!doctype") or content.lower().startswith("<html"):
+            raise ValueError(f"Endpoint '{url}' returned HTML instead of JSON manifest.")
+        
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            raise ValueError("Expected JSON dictionary from update endpoint.")
+        return data
+
+def normalize_manifest(data: dict) -> dict:
+    """
+    Normalizes update manifest from either custom schema or GitHub Releases API format.
+    """
+    if not isinstance(data, dict):
+        raise ValueError("Invalid manifest data format.")
+
+    # 1. GitHub Releases API format (has 'tag_name' and 'assets')
+    if "tag_name" in data and "assets" in data:
+        tag_str = data.get("tag_name", "").strip()
+        version = tag_str.lstrip("v").lstrip("V") if tag_str else ""
+        release_notes = data.get("body", "") or "• Performance improvements and bug fixes."
+        assets = data.get("assets", [])
+        
+        is_mac = (sys.platform == "darwin")
+        target_ext = ".dmg" if is_mac else ".exe"
+        
+        download_url = ""
+        sha256_hash = ""
+        
+        for asset in assets:
+            name = asset.get("name", "").lower()
+            if name.endswith(target_ext):
+                download_url = asset.get("browser_download_url", "")
+                digest = asset.get("digest", "")
+                if digest and digest.lower().startswith("sha256:"):
+                    sha256_hash = digest.split(":", 1)[1].strip().lower()
+                break
+
+        # Fallback to general release URL if asset URL wasn't found
+        if not download_url:
+            download_url = data.get("html_url", "")
+
+        return {
+            "version": version,
+            "download_url": download_url,
+            "sha256": sha256_hash,
+            "release_notes": release_notes,
+            "manifest_raw": data
+        }
+
+    # 2. Custom Manifest Schema
+    return {
+        "version": str(data.get("version", "")).strip().lstrip("v").lstrip("V"),
+        "download_url": data.get("download_url", ""),
+        "sha256": data.get("sha256", ""),
+        "release_notes": data.get("release_notes", "• Performance improvements and bug fixes."),
+        "manifest_raw": data
+    }
+
+def fetch_update_manifest(manifest_url: str = None, timeout: int = 8) -> dict:
+    """
+    Fetch and parse the JSON update manifest over HTTPS or local file path.
+    Seamlessly falls back to GitHub Releases API if primary manifest endpoint
+    is unavailable or returns non-JSON content.
+    """
+    primary_url = manifest_url or get_update_manifest_url()
+    
+    # Handle local file path or file:// URL for testing & local release channels
+    if os.path.exists(primary_url) or primary_url.startswith("file://"):
+        local_path = primary_url.replace("file:///", "").replace("file://", "")
+        with open(local_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return normalize_manifest(data)
+
+    primary_error = None
+    try:
+        data = _fetch_url_json(primary_url, timeout=timeout)
+        return normalize_manifest(data)
+    except Exception as e:
+        primary_error = e
+
+    # Fallback to GitHub Releases API if primary URL failed and wasn't already GitHub API
+    if primary_url != GITHUB_RELEASES_API_URL:
+        try:
+            github_data = _fetch_url_json(GITHUB_RELEASES_API_URL, timeout=timeout)
+            return normalize_manifest(github_data)
+        except Exception:
+            pass
+
+    # If all options failed, raise the initial error
+    raise primary_error or RuntimeError(f"Unable to retrieve update manifest from {primary_url}")
 
 def check_for_updates_async(callback, manifest_url: str = None):
     """

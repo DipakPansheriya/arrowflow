@@ -1681,7 +1681,7 @@ class ArrowAutomationGUI:
                     if not silent:
                         messagebox.showwarning(
                             "Unable to Check for Updates",
-                            "Unable to check for updates.\n\nCould not connect to the update server. Please check your network connection or update server URL."
+                            "Unable to check for updates.\n\nCould not connect to the update server. Please check your internet connection and try again."
                         )
                     return
 
@@ -1706,7 +1706,7 @@ class ArrowAutomationGUI:
                     if not silent:
                         messagebox.showinfo(
                             "ArrowFlow Update",
-                            "You are using the latest version."
+                            f"You are using the latest version (v{CURRENT_VERSION})."
                         )
 
             try:
@@ -1719,6 +1719,13 @@ class ArrowAutomationGUI:
 
     def _on_click_check_updates(self):
         """Manual update check button handler."""
+        if hasattr(self, "controller") and self.controller.is_running:
+            messagebox.showwarning(
+                "Automation Active",
+                "Automation is currently active. Please stop automation before checking for or applying updates."
+            )
+            return
+
         if hasattr(self, "latest_update_info") and self.latest_update_info and self.latest_update_info.get("update_available"):
             self._show_update_dialog(self.latest_update_info)
         else:
@@ -1729,6 +1736,8 @@ class ArrowAutomationGUI:
         dialog = tk.Toplevel(self.root)
         dialog.title("Update Available - ArrowFlow")
         dialog.configure(bg=self.bg_color)
+        rw = self.root.winfo_width()
+        rh = self.root.winfo_height()
         rx = self.root.winfo_x()
         ry = self.root.winfo_y()
         dw, dh = 440, 360
@@ -1817,7 +1826,15 @@ class ArrowAutomationGUI:
 
     def _confirm_and_start_update(self, prompt_dialog, update_info: dict):
         """Close update prompt and launch download dialog & verification workflow."""
+        if hasattr(self, "controller") and self.controller.is_running:
+            messagebox.showwarning(
+                "Automation Active",
+                "Automation is currently active. Please stop automation before downloading and installing updates."
+            )
+            return
+
         prompt_dialog.destroy()
+
 
         # Build Download Progress Dialog
         dl_dialog = tk.Toplevel(self.root)

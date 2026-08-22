@@ -8,6 +8,7 @@ CURRENT_VERSION = "1.0.0"
 
 # Default HTTPS URL for the update manifest.
 UPDATE_MANIFEST_URL = "https://arrowflow.web.app/downloads/latest.json"
+GITHUB_RELEASES_API_URL = "https://api.github.com/repos/DipakPansheriya/arrowflow/releases/latest"
 
 def get_update_manifest_url() -> str:
     """
@@ -38,6 +39,7 @@ def get_update_manifest_url() -> str:
         pass
 
     return UPDATE_MANIFEST_URL
+
 
 def parse_version(v_str: str):
     """
