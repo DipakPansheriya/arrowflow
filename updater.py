@@ -8,11 +8,20 @@ def is_frozen() -> bool:
     return getattr(sys, 'frozen', False)
 
 def get_current_exe_path() -> str:
-    """Return the absolute path of the currently running executable or main script."""
+    """Return the absolute path of the currently running executable or target binary."""
     if is_frozen():
         return os.path.abspath(sys.executable)
     else:
-        return os.path.abspath(sys.argv[0])
+        # Development / script mode: Target ArrowFlow.exe in workspace or dist
+        script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        dist_exe = os.path.join(script_dir, "dist", "ArrowFlow.exe")
+        if os.path.exists(dist_exe):
+            return dist_exe
+        root_exe = os.path.join(script_dir, "ArrowFlow.exe")
+        if os.path.exists(root_exe):
+            return root_exe
+        return os.path.join(script_dir, "ArrowFlow.exe")
+
 
 def launch_updater_and_exit(new_exe_path: str, controller=None, esc_listener=None):
     """

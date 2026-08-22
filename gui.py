@@ -1681,7 +1681,7 @@ class ArrowAutomationGUI:
                     if not silent:
                         messagebox.showwarning(
                             "Unable to Check for Updates",
-                            "Unable to check for updates.\n\nCould not connect to the update server. Please check your network connection or update server URL."
+                            "Unable to check for updates.\n\nCould not connect to the update server. Please check your internet connection and try again."
                         )
                     return
 
@@ -1706,7 +1706,7 @@ class ArrowAutomationGUI:
                     if not silent:
                         messagebox.showinfo(
                             "ArrowFlow Update",
-                            "You are using the latest version."
+                            f"You are using the latest version (v{CURRENT_VERSION})."
                         )
 
             try:
@@ -1719,6 +1719,13 @@ class ArrowAutomationGUI:
 
     def _on_click_check_updates(self):
         """Manual update check button handler."""
+        if hasattr(self, "controller") and self.controller.is_running:
+            messagebox.showwarning(
+                "Automation Active",
+                "Automation is currently active. Please stop automation before checking for or applying updates."
+            )
+            return
+
         if hasattr(self, "latest_update_info") and self.latest_update_info and self.latest_update_info.get("update_available"):
             self._show_update_dialog(self.latest_update_info)
         else:
@@ -1729,6 +1736,8 @@ class ArrowAutomationGUI:
         dialog = tk.Toplevel(self.root)
         dialog.title("Update Available - ArrowFlow")
         dialog.configure(bg=self.bg_color)
+        rw = self.root.winfo_width()
+        rh = self.root.winfo_height()
         rx = self.root.winfo_x()
         ry = self.root.winfo_y()
         dw, dh = 440, 360
@@ -1817,7 +1826,15 @@ class ArrowAutomationGUI:
 
     def _confirm_and_start_update(self, prompt_dialog, update_info: dict):
         """Close update prompt and launch download dialog & verification workflow."""
+        if hasattr(self, "controller") and self.controller.is_running:
+            messagebox.showwarning(
+                "Automation Active",
+                "Automation is currently active. Please stop automation before downloading and installing updates."
+            )
+            return
+
         prompt_dialog.destroy()
+
 
         # Build Download Progress Dialog
         dl_dialog = tk.Toplevel(self.root)
@@ -1881,7 +1898,7 @@ class ArrowAutomationGUI:
                     pct = int((downloaded / total) * 100)
                     dl_mb = downloaded / (1024 * 1024)
                     tot_mb = total / (1024 * 1024)
-                    status_str = f"Downloading: {dl_mb:.1f} MB / {tot_mb:.1f} MB"
+                    status_str = f"Downloading: {dl_mb:.1f} MB / {tot_mb:.1f} MB ({pct}%)"
                 else:
                     pct = 0
                     dl_mb = downloaded / (1024 * 1024)
@@ -1892,6 +1909,8 @@ class ArrowAutomationGUI:
                         dl_progress.config(value=pct, maximum=100)
                         lbl_dl_pct.config(text=f"{pct}%")
                         lbl_dl_status.config(text=status_str)
+                        try: dl_dialog.update_idletasks()
+                        except Exception: pass
 
                 if self.root.winfo_exists():
                     self.root.after(0, update_progress_ui)
@@ -1917,6 +1936,8 @@ class ArrowAutomationGUI:
                     def update_verifying_ui():
                         if dl_dialog.winfo_exists():
                             lbl_dl_status.config(text="Verifying SHA-256 checksum integrity...")
+                            try: dl_dialog.update_idletasks()
+                            except Exception: pass
                     self.root.after(0, update_verifying_ui)
                     
                     calculated_sha256 = calculate_sha256(temp_dest)
@@ -1943,6 +1964,9 @@ class ArrowAutomationGUI:
                 # Download & checksum verification succeeded - proceed to replacement!
                 def handle_installation():
                     if dl_dialog.winfo_exists():
+                        lbl_dl_status.config(text="Installing update...")
+                        try: dl_dialog.update_idletasks()
+                        except Exception: pass
                         dl_dialog.destroy()
                     launch_updater_and_exit(
                         temp_dest,
@@ -1951,6 +1975,7 @@ class ArrowAutomationGUI:
                     )
 
                 self.root.after(0, handle_installation)
+
 
             except Exception as ex:
                 if os.path.exists(temp_dest):

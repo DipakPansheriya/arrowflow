@@ -62,7 +62,8 @@ jobs:
 
       - name: Build Windows Executable
         run: |
-          python -m PyInstaller --noconfirm --onefile --windowed --name "ArrowFlow" --icon "arrowflow.ico" --add-data "arrowflow.ico;." --collect-all pynput main.py
+          python -m PyInstaller --noconfirm ArrowFlow.spec
+
 
       - name: Verify ArrowFlow.exe exists
         shell: pwsh

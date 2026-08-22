@@ -75,13 +75,16 @@ def main():
         except Exception:
             pass
 
-    # 3. Replace target executable with new executable
+    # 3. Replace target executable with new executable (with retry for file handle release)
     replacement_success = False
-    try:
-        shutil.copy2(new_exe, target_exe)
-        replacement_success = os.path.exists(target_exe)
-    except Exception:
-        replacement_success = False
+    for attempt in range(6):
+        try:
+            shutil.copy2(new_exe, target_exe)
+            if os.path.exists(target_exe):
+                replacement_success = True
+                break
+        except Exception:
+            time.sleep(0.5)
 
     # 4. Handle replacement failure & rollback
     if not replacement_success:
@@ -91,6 +94,7 @@ def main():
             except Exception:
                 pass
         sys.exit(1)
+
 
     # 5. Cleanup backup and temporary download
     if os.path.exists(backup_exe):
