@@ -24,8 +24,10 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_qr = collect_all('qrcode')
 datas += tmp_qr[0]; binaries += tmp_qr[1]; hiddenimports += tmp_qr[2]
 
-
-a = Analysis(
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Main Application Executable (ArrowFlow.exe)
+# ─────────────────────────────────────────────────────────────────────────────
+a1 = Analysis(
     ['main.py'],
     pathex=[],
     binaries=binaries,
@@ -38,19 +40,57 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
-pyz = PYZ(a.pure)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
+pyz1 = PYZ(a1.pure)
+exe1 = EXE(
+    pyz1,
+    a1.scripts,
+    a1.binaries,
+    a1.datas,
     [],
     name='ArrowFlow',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=['arrowflow.ico'],
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Standalone Updater & Bootstrapper Executable (ArrowFlowUpdater.exe)
+# ─────────────────────────────────────────────────────────────────────────────
+a2 = Analysis(
+    ['updater_app.py'],
+    pathex=[],
+    binaries=[],
+    datas=[('arrowflow.ico', '.')],
+    hiddenimports=['updater', 'updater.verifier', 'updater.manifest'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=0,
+)
+pyz2 = PYZ(a2.pure)
+exe2 = EXE(
+    pyz2,
+    a2.scripts,
+    a2.binaries,
+    a2.datas,
+    [],
+    name='ArrowFlowUpdater',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
