@@ -31,7 +31,7 @@ python main.py
 
 ---
 
-## 🛠️ 3. Building Executables (`ArrowFlow.exe` & `ArrowFlowUpdater.exe`)
+## 🛠️ 3. Building Executable (`ArrowFlow.exe`)
 
 ### Option A: Using the Automatic Build Script (Recommended)
 Double-click [`build.bat`](file:///c:/Users/Admin/Desktop/arrowflow/build.bat) or run from terminal:
@@ -39,15 +39,13 @@ Double-click [`build.bat`](file:///c:/Users/Admin/Desktop/arrowflow/build.bat) o
 build.bat
 ```
 
-### Option B: Using PyInstaller Spec Files
+### Option B: Using PyInstaller Spec File
 ```cmd
 pyinstaller ArrowFlow.spec
-pyinstaller ArrowFlowUpdater.spec
 ```
 
-> 📦 **Output Executables**:
+> 📦 **Output Executable**:
 > - Main App: `dist/ArrowFlow.exe`
-> - Auto-Updater: `dist/ArrowFlowUpdater.exe`
 
 ---
 
@@ -59,7 +57,6 @@ pyinstaller ArrowFlowUpdater.spec
 | **Global Toggle** | `ESC` Key | Toggles automation ON / OFF globally from any app |
 | **Stealth Mode** | `ALT + SPACE` | Hides/shows the application window & taskbar button |
 | **Targeting** | Dropdown Menu | Select specific active Visual Studio Code window |
-| **Auto Updater** | Background / Standalone | Automatic background update check with SHA-256 verification |
 
 ---
 
@@ -68,16 +65,13 @@ pyinstaller ArrowFlowUpdater.spec
 | File | Purpose |
 | :--- | :--- |
 | [`main.py`](file:///c:/Users/Admin/Desktop/arrowflow/main.py) | Main entry point for Python interpreter & EXE bootloader. |
-| [`gui.py`](file:///c:/Users/Admin/Desktop/arrowflow/gui.py) | Modern dark-themed Tkinter GUI, TOTP 2FA UI, update dialogs. |
+| [`gui.py`](file:///c:/Users/Admin/Desktop/arrowflow/gui.py) | Modern dark-themed Tkinter GUI, TOTP 2FA UI, configuration panel. |
 | [`auth/`](file:///c:/Users/Admin/Desktop/arrowflow/auth/) | Authenticator 2FA, TOTP manager, and Super Admin enrollment services. |
 | [`automation_engine.py`](file:///c:/Users/Admin/Desktop/arrowflow/automation_engine.py) | Background thread for random arrow key and mouse click simulation. |
 | [`window_helper.py`](file:///c:/Users/Admin/Desktop/arrowflow/window_helper.py) | Detects active VS Code windows and sends targeted inputs. |
 | [`global_listener.py`](file:///c:/Users/Admin/Desktop/arrowflow/global_listener.py) | `pynput` global key hooks for `ESC` and `ALT + SPACE`. |
-| [`version.py`](file:///c:/Users/Admin/Desktop/arrowflow/version.py) | System version info (`1.0.0`) and semantic version parser. |
-| [`update_checker.py`](file:///c:/Users/Admin/Desktop/arrowflow/update_checker.py) | Checks remote update manifest URL for newer releases. |
-| [`updater.py`](file:///c:/Users/Admin/Desktop/arrowflow/updater.py) | Launches background updater executable during updates. |
-| [`updater_main.py`](file:///c:/Users/Admin/Desktop/arrowflow/updater_main.py) | Standalone process for `ArrowFlowUpdater.exe`. |
+| [`version.py`](file:///c:/Users/Admin/Desktop/arrowflow/version.py) | System version info (`1.0.0`). |
 | [`ArrowFlow.spec`](file:///c:/Users/Admin/Desktop/arrowflow/ArrowFlow.spec) | PyInstaller build spec for `ArrowFlow.exe`. |
-| [`ArrowFlowUpdater.spec`](file:///c:/Users/Admin/Desktop/arrowflow/ArrowFlowUpdater.spec) | PyInstaller build spec for `ArrowFlowUpdater.exe`. |
 | [`build.bat`](file:///c:/Users/Admin/Desktop/arrowflow/build.bat) | One-click Windows build batch script. |
+
 

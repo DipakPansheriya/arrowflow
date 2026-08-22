@@ -121,12 +121,5 @@ class TestArrowFlowAutomation(unittest.TestCase):
         self.assertIsInstance(trusted, bool)
         self.assertIsInstance(msg, str)
 
-    def test_cross_platform_updater(self):
-        """Verify launch_updater_and_exit creates appropriate background script depending on OS."""
-        from updater import launch_updater_and_exit
-        with patch("sys.exit") as mock_exit, patch("subprocess.Popen") as mock_popen:
-            launch_updater_and_exit("test_path")
-            self.assertTrue(mock_exit.called or mock_popen.called)
-
 if __name__ == "__main__":
     unittest.main()
